@@ -9,6 +9,11 @@ pkg_check_modules(FFMPEG REQUIRED
 pkg_check_modules(SDL2 REQUIRED sdl2)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include())
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src SRC)
+# for test.cpp
+# list(REMOVE_ITEM SRC
+#     ${CMAKE_CURRENT_SOURCE_DIR}/src/vPlayer_sdl2.cpp
+# )
+# end
 add_executable(player ${SRC})
 
 target_include_directories(player PRIVATE
