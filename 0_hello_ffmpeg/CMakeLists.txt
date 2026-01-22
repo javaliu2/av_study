@@ -25,3 +25,4 @@ target_link_libraries(player
     ${FFMPEG_LIBRARIES}
     ${SDL2_LIBRARIES}
 )
+message(STATUS "SDL2_LIBRARIES = ${SDL2_LIBRARIES}")

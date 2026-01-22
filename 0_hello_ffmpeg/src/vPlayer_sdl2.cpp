@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <iostream>
 #include "output_log.h"
+#include "vPlayer_sdl2.h"
 #define __STDC_CONSTANT_MACROS 
 extern "C" {  // cpp文件中使用c头文件
     #include <SDL2/SDL.h>
@@ -19,20 +20,20 @@ static int g_sfp_refresh_thread_pause = 0;
 #define SFM_REFRESH_EVENT (SDL_USEREVENT+1)
 #define SFM_BREAK_EVENT (SDL_USEREVENT+2)
 
-typedef struct FFmpeg_V_Param_T {
-    AVFormatContext* pFormatCtx;
-    AVCodecContext* pCodecCtx;  // codec: COder(编码器) + DECoder(解码器), 编解码器
-    SwsContext* pSwsCtx;
-    int video_index;
-} FFmpeg_V_Param;
+// typedef struct FFmpeg_V_Param_T {
+//     AVFormatContext* pFormatCtx;
+//     AVCodecContext* pCodecCtx;  // codec: COder(编码器) + DECoder(解码器), 编解码器
+//     SwsContext* pSwsCtx;
+//     int video_index;
+// } FFmpeg_V_Param;
 
-typedef struct SDL_Param_T {
-    SDL_Window* p_sdl_window;
-    SDL_Renderer* p_sdl_renderer;
-    SDL_Texture* p_sdl_texture;
-    SDL_Rect sdl_rect;
-    SDL_Thread* p_sdl_thread;
-} SDL_Param;
+// typedef struct SDL_Param_T {
+//     SDL_Window* p_sdl_window;
+//     SDL_Renderer* p_sdl_renderer;
+//     SDL_Texture* p_sdl_texture;
+//     SDL_Rect sdl_rect;
+//     SDL_Thread* p_sdl_thread;
+// } SDL_Param;
 
 int init_ffmpeg(FFmpeg_V_Param* p_ffmpeg_param, const char* file_path) {
     p_ffmpeg_param->pFormatCtx = avformat_alloc_context();
@@ -61,6 +62,7 @@ int init_ffmpeg(FFmpeg_V_Param* p_ffmpeg_param, const char* file_path) {
            avcodec_parameters_to_context(p_ffmpeg_param->pCodecCtx, pStream->codecpar);
            g_frame_rate = pStream->avg_frame_rate.num / pStream->avg_frame_rate.den;  // 分子 / 分母
            p_ffmpeg_param->video_index = i;
+           pStream->time_base;  // 时间基单位
         }
     }
     if (!p_ffmpeg_param->pCodecCtx) {
@@ -184,16 +186,78 @@ int vPlayer_sdl(const char* file_path) {
     av_image_fill_arrays(pFrameYUV->data, pFrameYUV->linesize, out_buffer,
     p_ffmpeg_param->pCodecCtx->pix_fmt, p_ffmpeg_param->pCodecCtx->width, p_ffmpeg_param->pCodecCtx->height, 1);
     // init sdl
+    p_sdl_param = new SDL_Param_T();
+    memset(p_sdl_param, 0, sizeof(SDL_Param_T));  // attention, it should be struct name, not the variable name
+    if (init_sdl(p_sdl_param, p_ffmpeg_param->pCodecCtx->width, p_ffmpeg_param->pCodecCtx->height)) {
+        ret = -1;
+        goto end;
+    }
+    // demuxing and show
+    while (true) {
+        int temp_ret = 0;
+        SDL_WaitEvent(&sdl_event);
+        if (sdl_event.type == SFM_REFRESH_EVENT) {
+            while (true) {
+                if (av_read_frame(p_ffmpeg_param->pFormatCtx, packet) < 0) {
+                    g_sfp_refresh_thread_exit = 1;
+                    break;
+                }
+                if (packet->stream_index == p_ffmpeg_param->video_index) {
+                    break;
+                }
+            }
+            if (avcodec_send_packet(p_ffmpeg_param->pCodecCtx, packet)) {
+                g_sfp_refresh_thread_exit = 1;
+            }
+            do {
+                temp_ret = avcodec_receive_frame(p_ffmpeg_param->pCodecCtx, pFrame);
+                if (temp_ret == AVERROR_EOF) {
+                    g_sfp_refresh_thread_exit = 1;
+                    break;
+                }
+                if (temp_ret == 0) {
+                    // sws: SoftWare Scaling
+                    // param hint: const uint8_t *const srcSlice[]: srcSlice是一个指针数组，其中的指针数据不能被修改(const uint8_t *)，
+                    // 另外srcSlice本身值也不可被修改，srcSlice是一个数组，其实就是一个指针
+                    sws_scale(p_ffmpeg_param->pSwsCtx, (const unsigned char* const*)pFrame->data, 
+                pFrame->linesize, 0, p_ffmpeg_param->pCodecCtx->height, pFrameYUV->data, pFrameYUV->linesize);
+                    SDL_UpdateTexture(p_sdl_param->p_sdl_texture, &p_sdl_param->sdl_rect, pFrameYUV->data[0],
+                    pFrameYUV->linesize[0]);
+                    SDL_RenderClear(p_sdl_param->p_sdl_renderer);
+                    SDL_RenderCopy(p_sdl_param->p_sdl_renderer, p_sdl_param->p_sdl_texture,
+                    NULL, &p_sdl_param->sdl_rect);
+                    SDL_RenderPresent(p_sdl_param->p_sdl_renderer);
+                }
+            } while (temp_ret != AVERROR(EAGAIN));
+        } else if (sdl_event.type == SFM_BREAK_EVENT) {
+            break;
+        } else if (sdl_event.type == SDL_KEYDOWN) {
+            if (sdl_event.key.keysym.sym == SDLK_SPACE) {
+                g_sfp_refresh_thread_pause = !g_sfp_refresh_thread_pause;
+            }
+            if (sdl_event.key.keysym.sym == SDLK_q) {
+                g_sfp_refresh_thread_exit = 1;
+            }
+        } else if (sdl_event.type == SDL_QUIT) {
+            g_sfp_refresh_thread_exit = 1;
+        }
+    }
     end:
+        release_ffmpeg(p_ffmpeg_param);
+        av_packet_free(&packet);
+        av_frame_free(&pFrame);
+        av_frame_free(&pFrameYUV);
+        release_sdl(p_sdl_param);
     return ret;
 }
-int SDL_main() {
-    printf("SDL version: %d.%d.%d\n",
-           SDL_MAJOR_VERSION,
-           SDL_MINOR_VERSION,
-           SDL_PATCHLEVEL);
 
-    printf("FFmpeg version: %s\n", av_version_info());
-    output_log(LOG_DEBUG, "i am %s, and i am %d years old.", "xs", 26);
-    return 0;
-}
+// int SDL_main() {
+//     printf("SDL version: %d.%d.%d\n",
+//            SDL_MAJOR_VERSION,
+//            SDL_MINOR_VERSION,
+//            SDL_PATCHLEVEL);
+
+//     printf("FFmpeg version: %s\n", av_version_info());
+//     output_log(LOG_DEBUG, "i am %s, and i am %d years old.", "xs", 26);
+//     return 0;
+// }

@@ -19,7 +19,7 @@ void func2(int** p) {
     cout << "end func2\n";
 }
 
-int main() {
+int main_() {
     int a = 1;
     int* main_p = &a;
     cout << "address of g_cnt: " << &g_cnt << endl;
