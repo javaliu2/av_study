@@ -2,6 +2,12 @@
 #include <stdarg.h>
 #include "output_log.h"
 #define MAX_BUF_LEN 1024
+#define COLOR_RESET   "\033[0m"
+#define COLOR_RED     "\033[31m"
+#define COLOR_GREEN   "\033[32m"
+#define COLOR_YELLOW  "\033[33m"
+#define COLOR_BLUE    "\033[34m"
+#define COLOR_PURPLE  "\033[35m"
 
 int g_log_debug_flag = 1;
 int g_log_info_flag = 1;
@@ -26,21 +32,22 @@ void output_log(LOG_LEVEL log_level, const char* fmt, ...) {
     {
     case LOG_DEBUG:
         if (g_log_debug_flag)
-            printf("[Log-Debug]:%s\n", buf);
+            printf(COLOR_BLUE "[Log-Debug]: %s" COLOR_RESET "\n", buf);
         break;
     case LOG_INFO:
         if (g_log_info_flag)
-            printf("[Log-Info]:%s\n", buf);
+            printf(COLOR_GREEN "[Log-Info]: %s" COLOR_RESET "\n", buf);
         break;
     case LOG_WARNING:
         if (g_log_warnning_flag)
-        printf("[Log-Warnning]:%s\n", buf);
+        printf(COLOR_YELLOW "[Log-Warnning]: %s" COLOR_RESET "\n", buf);
         break;
     case LOG_ERROR:
         if (g_log_error_flag)
-        printf("[Log-Error]:%s\n", buf);
+        printf(COLOR_RED "[Log-Error]: %s" COLOR_RESET "\n", buf);  // 相邻的字符串字面量在编译期会自动合并
         break;
     default:
+        // char* c = "aaa" "bb" "cc";  // it's ok
         break;
     }
     va_end(args);

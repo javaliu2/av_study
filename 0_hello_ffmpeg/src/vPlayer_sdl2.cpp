@@ -54,14 +54,18 @@ int init_ffmpeg(FFmpeg_V_Param* p_ffmpeg_param, const char* file_path) {
         return -1;
     }
     // get video pCodecParams, codec and frame rate
+    output_log(LOG_DEBUG, "nb_streams: %d", p_ffmpeg_param->pFormatCtx->nb_streams);  // [Log-Debug]: nb_streams: 1, 表示只有video
+    // nb_streams是说该音视频文件里面有几个流，以下for循环不是对某一个流中所有数据的遍历，而是对流的遍历
     for (int i = 0; i < p_ffmpeg_param->pFormatCtx->nb_streams; ++i) {
         AVStream* pStream = p_ffmpeg_param->pFormatCtx->streams[i];
         if (pStream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-           pCodec = avcodec_find_decoder(pStream->codecpar->codec_id);
+           output_log(LOG_DEBUG, "codec_id: %d", pStream->codecpar->codec_id);  // [Log-Debug]:codec_id: 1, 对应AV_CODEC_ID_MPEG1VIDEO
+           pCodec = avcodec_find_decoder(pStream->codecpar->codec_id);  // 编解码器
            p_ffmpeg_param->pCodecCtx = avcodec_alloc_context3(pCodec);
            avcodec_parameters_to_context(p_ffmpeg_param->pCodecCtx, pStream->codecpar);
            g_frame_rate = pStream->avg_frame_rate.num / pStream->avg_frame_rate.den;  // 分子 / 分母
-           p_ffmpeg_param->video_index = i;
+           output_log(LOG_DEBUG, "g_frame_rate: %d", g_frame_rate);  // [Log-Debug]: g_frame_rate: 25
+           p_ffmpeg_param->video_index = i;  // 0
            pStream->time_base;  // 时间基单位
         }
     }
@@ -78,10 +82,17 @@ int init_ffmpeg(FFmpeg_V_Param* p_ffmpeg_param, const char* file_path) {
     p_ffmpeg_param->pSwsCtx = sws_getContext(p_ffmpeg_param->pCodecCtx->width,
     p_ffmpeg_param->pCodecCtx->height, p_ffmpeg_param->pCodecCtx->pix_fmt,
     p_ffmpeg_param->pCodecCtx->width, p_ffmpeg_param->pCodecCtx->height,
-    AV_PIX_FMT_YUV420P, SWS_BICUBIC, NULL, NULL, NULL);
+    AV_PIX_FMT_YUV420P, SWS_BICUBIC, NULL, NULL, NULL);  // 拿到SwsContext对象，具体的转化需要调用sws_scale()
 
     av_dump_format(p_ffmpeg_param->pFormatCtx, p_ffmpeg_param->video_index, file_path, 0);
-
+    /**
+     * 以上函数的输出：
+     * Input #0, mpeg, from '../resource/test.mpg':
+     * Duration: 00:00:09.94, start: 0.540000, bitrate: 1045 kb/s
+     * Stream #0:0[0x1e0]: Video: mpeg1video, yuv420p(tv, progressive), 1280x720 [SAR 1:1 DAR 16:9], 104857 kb/s, 25 fps, 50 tbr, 90k tbn, start 0.540000
+     * Side data:
+         cpb: bitrate max/min/avg: 0/0/0 buffer size: 49152 vbv_delay: N/A
+     */
     return 0;
 }
 
@@ -119,7 +130,12 @@ int sfp_refresh_thread(void* opaque) {
             sdl_event.type = SFM_REFRESH_EVENT;  // SFM是作者自定义前缀，+1表示这是自定义的第一个事件
             SDL_PushEvent(&sdl_event);
         }
-        SDL_Delay(1000 / g_frame_rate);
+        SDL_Delay(1000 / g_frame_rate);  // Wait a specified number of milliseconds before returning.
+        // 1000 / 25 = 40ms=0.04s, 即程序在这里阻塞0.04秒，这刚好是一帧显示的时间长短
+        // G-bro:
+        // 按视频帧率控制刷新节奏：
+        // 例如 25fps → 1000 / 25 = 40ms ≈ 0.04s
+        // 即每隔一帧的理想显示时间，向主线程发送一次“刷新一帧”的事件
     }
     g_sfp_refresh_thread_exit = 0;
     g_sfp_refresh_thread_pause = 0;
@@ -148,6 +164,7 @@ int init_sdl(SDL_Param_T* p_sdl_param, int screen_w, int screen_h) {
     p_sdl_param->sdl_rect.y = 0;
     p_sdl_param->sdl_rect.w = screen_w;
     p_sdl_param->sdl_rect.h = screen_h;
+    // 启动一个新线程，在线程中执行 sfp_refresh_thread, 线程之间通过 SDL 事件队列进行通信
     p_sdl_param->p_sdl_thread = SDL_CreateThread(sfp_refresh_thread, NULL, NULL);
     return 0;
 }
@@ -161,7 +178,8 @@ int release_sdl(SDL_Param_T* p_sdl_param) {
 int vPlayer_sdl(const char* file_path) {
     // ffmpeg param
     FFmpeg_V_Param *p_ffmpeg_param = NULL;
-    AVPacket * packet = NULL;
+    AVPacket * packet = NULL;  // 包含编码的数据
+    // 解码之后的数据放到pFrame,但是图像格式可能为rgb或YUV444,借助sws_context将其转换为YUV420,存储到pFrameYUV供SDL显示使用
     AVFrame *pFrame = NULL, *pFrameYUV = NULL;
     int out_buffer_size = 0;
     unsigned char* out_buffer = 0;
@@ -182,6 +200,7 @@ int vPlayer_sdl(const char* file_path) {
     pFrame = av_frame_alloc();
     pFrameYUV = av_frame_alloc();
     out_buffer_size = av_image_get_buffer_size(AV_PIX_FMT_YUV420P, p_ffmpeg_param->pCodecCtx->width, p_ffmpeg_param->pCodecCtx->height, 1);
+    output_log(LOG_DEBUG, "out_buffer_size: %d", out_buffer_size);  // [Log-Debug]: out_buffer_size: 1382400 = 1280*720*1.5(YUV420中一个像素平均1.5字节)
     out_buffer = (unsigned char*)av_malloc(out_buffer_size);
     av_image_fill_arrays(pFrameYUV->data, pFrameYUV->linesize, out_buffer,
     p_ffmpeg_param->pCodecCtx->pix_fmt, p_ffmpeg_param->pCodecCtx->width, p_ffmpeg_param->pCodecCtx->height, 1);
@@ -197,6 +216,7 @@ int vPlayer_sdl(const char* file_path) {
         int temp_ret = 0;
         SDL_WaitEvent(&sdl_event);
         if (sdl_event.type == SFM_REFRESH_EVENT) {
+            // 1、解码一帧
             while (true) {
                 if (av_read_frame(p_ffmpeg_param->pFormatCtx, packet) < 0) {
                     g_sfp_refresh_thread_exit = 1;
@@ -216,11 +236,13 @@ int vPlayer_sdl(const char* file_path) {
                     break;
                 }
                 if (temp_ret == 0) {
+                    // 2、转格式
                     // sws: SoftWare Scaling
                     // param hint: const uint8_t *const srcSlice[]: srcSlice是一个指针数组，其中的指针数据不能被修改(const uint8_t *)，
                     // 另外srcSlice本身值也不可被修改，srcSlice是一个数组，其实就是一个指针
                     sws_scale(p_ffmpeg_param->pSwsCtx, (const unsigned char* const*)pFrame->data, 
                 pFrame->linesize, 0, p_ffmpeg_param->pCodecCtx->height, pFrameYUV->data, pFrameYUV->linesize);
+                    // 3、渲染一帧
                     SDL_UpdateTexture(p_sdl_param->p_sdl_texture, &p_sdl_param->sdl_rect, pFrameYUV->data[0],
                     pFrameYUV->linesize[0]);
                     SDL_RenderClear(p_sdl_param->p_sdl_renderer);
