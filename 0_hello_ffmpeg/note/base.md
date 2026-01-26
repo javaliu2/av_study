@@ -154,3 +154,113 @@ chroma_location=center
 side_data_type=AVPanScan
 [/SIDE_DATA]
 [/FRAME]
+```
+
+## 5、AVPacket结构体描述
+
+```c
+/**
+ * This structure stores compressed data. It is typically exported by demuxers
+ * and then passed as input to decoders, or received as output from encoders and
+ * then passed to muxers.
+ * 该结构体存储了压缩的数据。它通常由解封装器导出，然后传递给解码器。或者来自编码器的输出，然后传递给封装器
+ * For video, it should typically contain one compressed frame. For audio it may
+ * contain several compressed frames. Encoders are allowed to output empty
+ * packets, with no compressed data, containing only side data
+ * (e.g. to update some stream parameters at the end of encoding).
+ * 对于视频来说，packet里通常包括一个压缩帧。对于音频，它可能包含多个压缩帧。编码器被允许输出空的packet，即不带有压缩数据，只包含辅助数据。（例如，在编码结束的时候更新流参数）
+ * The semantics of data ownership depends on the buf field.
+ * If it is set, the packet data is dynamically allocated and is
+ * valid indefinitely until a call to av_packet_unref() reduces the
+ * reference count to 0.
+ * 数据的语义拥有者依赖于buf字段。如果它被设置，packet的数据被动态分配，数据无期限有效直至
+ * av_packet_unref()被调用，该函数将引用技术置为0
+ * If the buf field is not set av_packet_ref() would make a copy instead
+ * of increasing the reference count.
+ * 如果buf字段没有被设置，av_packet_ref()会制作一个拷贝而不是增加引用计数
+ * The side data is always allocated with av_malloc(), copied by
+ * av_packet_ref() and freed by av_packet_unref().
+ * 辅助数据总是由av_malloc()分配，由av_packet_ref()拷贝，由av_packet_unref()释放。
+ * sizeof(AVPacket) being a part of the public ABI is deprecated. once
+ * av_init_packet() is removed, new packets will only be able to be allocated
+ * with av_packet_alloc(), and new fields may be added to the end of the struct
+ * with a minor bump.
+ * ABI: Application Binary Interface，二进制层面的“接口规范”，编译器/链接器/CPU用的接口
+ * sizeof(AVPacket)作为公共ABI的一部分是弃用的。当av_init_packet()移除的时候，新的packet只能够通过av_packet_alloc()被分配，新的字段可以被添加到结构体的末尾通过增加字段。
+ * @see av_packet_alloc
+ * @see av_packet_ref
+ * @see av_packet_unref
+ */
+typedef struct AVPacket {
+    /**
+     * A reference to the reference-counted buffer where the packet data is
+     * stored.
+     * May be NULL, then the packet data is not reference-counted.
+     * 对引用可计数的buffer的引用，buffer中存放packet数据。可以为null，这样的话，packet数据不是引用可计数的。
+     */
+    AVBufferRef *buf;
+    /**
+     * Presentation timestamp in AVStream->time_base units; the time at which
+     * the decompressed packet will be presented to the user.
+     * Can be AV_NOPTS_VALUE if it is not stored in the file.
+     * pts MUST be larger or equal to dts as presentation cannot happen before
+     * decompression, unless one wants to view hex dumps. Some formats misuse
+     * the terms dts and pts/cts to mean something different. Such timestamps
+     * must be converted to true pts/dts before they are stored in AVPacket.
+     * 
+     */
+    int64_t pts;
+    /**
+     * Decompression timestamp in AVStream->time_base units; the time at which
+     * the packet is decompressed.
+     * Can be AV_NOPTS_VALUE if it is not stored in the file.
+     */
+    int64_t dts;
+    uint8_t *data;
+    int   size;
+    int   stream_index;
+    /**
+     * A combination of AV_PKT_FLAG values
+     */
+    int   flags;
+    /**
+     * Additional packet data that can be provided by the container.
+     * Packet can contain several types of side information.
+     */
+    AVPacketSideData *side_data;
+    int side_data_elems;
+
+    /**
+     * Duration of this packet in AVStream->time_base units, 0 if unknown.
+     * Equals next_pts - this_pts in presentation order.
+     */
+    int64_t duration;
+
+    int64_t pos;                            ///< byte position in stream, -1 if unknown
+
+    /**
+     * for some private data of the user
+     */
+    void *opaque;
+
+    /**
+     * AVBufferRef for free use by the API user. FFmpeg will never check the
+     * contents of the buffer ref. FFmpeg calls av_buffer_unref() on it when
+     * the packet is unreferenced. av_packet_copy_props() calls create a new
+     * reference with av_buffer_ref() for the target packet's opaque_ref field.
+     *
+     * This is unrelated to the opaque field, although it serves a similar
+     * purpose.
+     */
+    AVBufferRef *opaque_ref;
+
+    /**
+     * Time base of the packet's timestamps.
+     * In the future, this field may be set on packets output by encoders or
+     * demuxers, but its value will be by default ignored on input to decoders
+     * or muxers.
+     */
+    AVRational time_base;
+} AVPacket;
+```
+
