@@ -264,3 +264,12 @@ typedef struct AVPacket {
 } AVPacket;
 ```
 
+# 6、音视频基础
+
+## 1、bit_rate
+
+bit_rate = 单位时间内输出的比特数（bits / second）
+
+## 2、linesize
+
+表示每一行图像数据在内存中占用的字节数（也叫stride/pitch），它>=实际像素所需字节数，因为进行了内存对齐。

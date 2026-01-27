@@ -15,6 +15,8 @@ static void encode(AVCodecContext* pCodecCtx, AVFrame* pFrame, AVPacket* pPacket
     int ret;
     ret = avcodec_send_frame(pCodecCtx, pFrame);
     // 为什么需要while，一个frame会被编码为多个packet?
+    // 假设视频序列帧为I B B P，那么当把B帧送入encoder时，不会产生输出，因为他需要参考后面的I或者P帧
+    // encoder会把这个B帧缓存，遇到第二个B帧同理，那么遇到第四个P帧，前两个B帧可以被编码，encoder会连续输出三个帧
     while (ret >= 0) {
         ret = avcodec_receive_packet(pCodecCtx, pPacket);
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
@@ -79,6 +81,7 @@ int encode_yuv_to_h264(const char* output_filePath) {
     pFrame->height = pCodecCtx->height;
     // allocate new buffer for audio or video data
     // 内存对齐。32表示什么
+    // G-bro: 为 AVFrame 分配的每一行数据，按 32 字节对齐
     if (av_frame_get_buffer(pFrame, 32) < 0) {
         output_log(LOG_ERROR, "av_frame_get_buffer error");
         ret = -1;
@@ -102,12 +105,18 @@ int encode_yuv_to_h264(const char* output_filePath) {
             goto end;
         }
         // Y
+        // 1像素大小1字节，Y分量一行352个像素，即352个字节，352%32==0，无需对齐
+        output_log(LOG_DEBUG, "pFrame->linesize[0]: %d", pFrame->linesize[0]);  // 352
         for (y = 0; y < pCodecCtx->height; ++y) {
             for (x = 0; x < pCodecCtx->width; ++x) {
+                // pFrame->linesize[0]是Y维度的字节跨度
                 pFrame->data[0][y*pFrame->linesize[0]+x] = x + y + i * 3;
             }
         }
         // U and V
+        // U或V分量一行352/2==176个像素，即176字节，176/32=5.5，需要向上取整以进行内存对齐。取6，那么6*32=192
+        output_log(LOG_DEBUG, "pFrame->linesize[1]: %d", pFrame->linesize[1]);  // 192
+        output_log(LOG_DEBUG, "pFrame->linesize[1]: %d", pFrame->linesize[2]);  // 192
         for (y = 0; y < pCodecCtx->height / 2; ++y) {
             for (x = 0; x < pCodecCtx->width / 2; ++x) {
                 pFrame->data[1][y*pFrame->linesize[1]+x] = 128 + y + i * 2;
@@ -116,11 +125,14 @@ int encode_yuv_to_h264(const char* output_filePath) {
         }
         pFrame->pts = i;
         // encode this image
+        // perspective | frame          | packet
+        // encoder     | 原始未压缩数据   | 编码后的码流数据
+        // decoder      | 解码后的原始数据 | 解码前的码流数据
         encode(pCodecCtx, pFrame, pPacket, p_output_f);
     }
     // flush the encoder
     encode(pCodecCtx, nullptr, pPacket, p_output_f);
-    // add sequence end code to have a real MPEG file
+    // add sequence endcode to have a real MPEG file
     fwrite(endcode, 1, sizeof(endcode), p_output_f);
     fclose(p_output_f);
 end:
