@@ -37,6 +37,12 @@ add_executable(encode_video_test
     ${SRC_SIR}/output_log.cpp
 )
 
+add_executable(encode_audio_test 
+    ${SRC_SIR}/encode_audio_test.cpp 
+    ${SRC_SIR}/encode_pcm_to_mp2.cpp 
+    ${SRC_SIR}/output_log.cpp
+)
+
 target_include_directories(decode_video_test PRIVATE
     # ${FFMPEG_INCLUDE_DIRS}
     ${SDL2_INCLUDE_DIRS}
@@ -48,5 +54,7 @@ target_link_libraries(decode_video_test
 target_link_libraries(encode_video_test 
     ffmpeg_common
 )
-
+target_link_libraries(encode_audio_test 
+    ffmpeg_common
+)
 message(STATUS "SDL2_LIBRARIES = ${SDL2_LIBRARIES}")
