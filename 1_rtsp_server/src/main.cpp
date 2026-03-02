@@ -36,6 +36,16 @@ static int createTcpSocket() {
     return sockfd;
 }
 
+static int createUdpSocket() {
+    int sockfd;
+    int on;
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0)
+        return -1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on));
+    return sockfd;
+}
+
 static int bindSocketAddr(int sockfd, const char* ip, int port) {
     struct sockaddr_in addr;
 
@@ -66,6 +76,20 @@ static int acceptClient(int sockfd, char* ip, int* port) {
     return clientfd;
 }
 
+// inline修饰的函数，建议编译器进行代码展开，而不是函数调用
+static inline bool startCode001(char* buf) {
+    if (buf[0] == 0 && buf[1] == 0 && buf[2] == 0) {
+        return true;
+    }
+    return false;
+}
+
+static inline bool startCode0001(char* buf) {
+    if (buf[0] == 0 && buf[1] == 0 && buf[2] == 0 && buf[3] == 0) {
+        return true;
+    }
+    return false;
+}
 static int handleCmd_OPTIONS(char* result, int cseq) {
     sprintf(result, "RTSP/1.0 200 OK\r\nCSeq: %d\r\nPublic: OPTIONS, DESCRIBE, SETUP, PLAY\r\n\r\n", cseq);
     return 0;
