@@ -61,7 +61,7 @@ int rtpSendPacketOverTcp(int clientSockfd, struct RtpPacket* rtpPacket, uint32_t
 
     return ret;
 }
-int rtpSendPaacketOverUdp(int serverRtpSockfd, const char* ip, uint16_t port, struct RtpPacket* rtpPacket, uint32_t dataSize)  {
+int rtpSendPacketOverUdp(int serverRtpSockfd, const char* ip, uint16_t port, struct RtpPacket* rtpPacket, uint32_t dataSize)  {
     struct sockaddr_in addr;
     int ret;
 
