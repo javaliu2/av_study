@@ -43,13 +43,23 @@ int rtpSendPacketOverTcp(int clientSockfd, struct RtpPacket* rtpPacket, uint32_t
     tempBuf[2] = (rtpSize >> 8) & 0xFF;  // RTP包长度 高8位
     tempBuf[3] = rtpSize & 0xFF;  // RTP包长度 低8位
     
-    struct RtpPacket netPkt = *rtpPacket;  // copy packet
-    netPkt.rtpHeader.seq = htons(netPkt.rtpHeader.seq);
-    netPkt.rtpHeader.timestamp = htonl(netPkt.rtpHeader.timestamp);
-    netPkt.rtpHeader.ssrc = htonl(netPkt.rtpHeader.ssrc);
-    memcpy(tempBuf + 4, &netPkt, rtpSize);  // 将&netPkt内存处的rtpSize个字节拷贝到tempBuf[4]处
-
+    rtpPacket->rtpHeader.seq = htons(rtpPacket->rtpHeader.seq);
+    rtpPacket->rtpHeader.timestamp = htonl(rtpPacket->rtpHeader.timestamp);
+    rtpPacket->rtpHeader.ssrc = htonl(rtpPacket->rtpHeader.ssrc);
+    memcpy(tempBuf + 4, rtpPacket, rtpSize);
     int ret = send(clientSockfd, tempBuf, 4 + rtpSize, 0);
+    // 字节序回溯，network -> host
+    rtpPacket->rtpHeader.seq = ntohs(rtpPacket->rtpHeader.seq);
+    rtpPacket->rtpHeader.timestamp = ntohl(rtpPacket->rtpHeader.timestamp);
+    rtpPacket->rtpHeader.ssrc = ntohl(rtpPacket->rtpHeader.ssrc);
+
+    // struct RtpPacket netPkt = *rtpPacket;  // copy packet
+    // netPkt.rtpHeader.seq = htons(netPkt.rtpHeader.seq);
+    // netPkt.rtpHeader.timestamp = htonl(netPkt.rtpHeader.timestamp);
+    // netPkt.rtpHeader.ssrc = htonl(netPkt.rtpHeader.ssrc);
+    // memcpy(tempBuf + 4, &netPkt, rtpSize);  // 将&netPkt内存处的rtpSize个字节拷贝到tempBuf[4]处
+
+    // int ret = send(clientSockfd, tempBuf, 4 + rtpSize, 0);
     // 后续逻辑涉及到对这些字段的修改，所以需要改为主机序
     // rtpPacket->rtpHeader.seq = ntohs(rtpPacket->rtpHeader.seq);
     // rtpPacket->rtpHeader.timestamp = ntohl(rtpPacket->rtpHeader.timestamp);
@@ -69,11 +79,29 @@ int rtpSendPacketOverUdp(int serverRtpSockfd, const char* ip, uint16_t port, str
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = inet_addr(ip);
 
-    struct RtpPacket netPkt = *rtpPacket;
-    netPkt.rtpHeader.seq = htons(netPkt.rtpHeader.seq);
-    netPkt.rtpHeader.timestamp = htonl(netPkt.rtpHeader.timestamp);
-    netPkt.rtpHeader.ssrc = htonl(netPkt.rtpHeader.ssrc);
-
-    ret = sendto(serverRtpSockfd, (char*)&netPkt, dataSize + RTP_HEADER_SIZE, 0, (struct sockaddr*)&addr, sizeof(addr));
+    // struct RtpPacket netPkt = *rtpPacket;  // 这里拷贝的话会丢失payload数据，所以出现main.cpp中frame数据和rtp payload数据不一致的问题
+    // 还是采用作者的方法吧，G-bro真是“给我上了一课”
+    // LOG_INFO("send rtp header.seq: %d\n", netPkt.rtpHeader.seq);
+    // LOG_INFO("send rtp header.timestamp: %d\n", netPkt.rtpHeader.timestamp);
+    // LOG_INFO("send rtp header.ssrc: %d\n", netPkt.rtpHeader.ssrc);
+    // netPkt.rtpHeader.seq = htons(netPkt.rtpHeader.seq);
+    // netPkt.rtpHeader.timestamp = htonl(netPkt.rtpHeader.timestamp);
+    // netPkt.rtpHeader.ssrc = htonl(netPkt.rtpHeader.ssrc);
+    
+    // 字段字节序转换：host -> network 
+    rtpPacket->rtpHeader.seq = htons(rtpPacket->rtpHeader.seq);
+    rtpPacket->rtpHeader.timestamp = htonl(rtpPacket->rtpHeader.timestamp);
+    rtpPacket->rtpHeader.ssrc = htonl(rtpPacket->rtpHeader.ssrc);
+    LOG_INFO("send rtp payload: ");
+    for (int i = 0; i < dataSize; ++i) {
+        printf("%02x ", rtpPacket->payload[i]);
+    }
+    printf("\n");
+    LOG_INFO("payload data display end");
+    ret = sendto(serverRtpSockfd, (const char*)rtpPacket, dataSize + RTP_HEADER_SIZE, 0, (struct sockaddr*)&addr, sizeof(addr));
+    // 字节序回溯，network -> host
+    rtpPacket->rtpHeader.seq = ntohs(rtpPacket->rtpHeader.seq);
+    rtpPacket->rtpHeader.timestamp = ntohl(rtpPacket->rtpHeader.timestamp);
+    rtpPacket->rtpHeader.ssrc = ntohl(rtpPacket->rtpHeader.ssrc);
     return ret;
 }

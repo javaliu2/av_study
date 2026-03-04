@@ -26,6 +26,7 @@
 #define SERVER_PORT 8554
 #define SERVER_RTP_PORT 55532
 #define SERVER_RTCP_PORT 55533
+#define BUF_MAX_SIZE (1024*1024)
 
 static int createTcpSocket() {
     int sockfd;
@@ -79,14 +80,14 @@ static int acceptClient(int sockfd, char* ip, int* port) {
 
 // inline修饰的函数，建议编译器进行代码展开，而不是函数调用
 static inline bool startCode001(char* buf) {
-    if (buf[0] == 0 && buf[1] == 0 && buf[2] == 0) {
+    if (buf[0] == 0 && buf[1] == 0 && buf[2] == 1) {  // 粗心, [2]==0, big bug
         return true;
     }
     return false;
 }
 
 static inline bool startCode0001(char* buf) {
-    if (buf[0] == 0 && buf[1] == 0 && buf[2] == 0 && buf[3] == 0) {
+    if (buf[0] == 0 && buf[1] == 0 && buf[2] == 0 && buf[3] == 1) {  // the same error
         return true;
     }
     return false;
@@ -142,13 +143,18 @@ static int rtpSendH264Frame(int serverRtpSockfd, const char* ip, uint16_t port, 
     uint8_t naluFirstByte;
     int sendBytes = 0;
     int ret;
-
+    // 这里传递进来的frame是不包括startCode的
     naluFirstByte = frame[0];
     LOG_INFO("frameSize=%d\n", frameSize);
     // 这里的frameSize其实是一个NALU的大小
     if (frameSize <= RTP_MAX_PKT_SIZE) {
         // 一个NALU的大小小于RTP包所能支持的最大大小，所以将采用单一NALU模式，即将一个NALU放于一个RTP包中
         memcpy(rtpPacket->payload, frame, frameSize);  // 从frame拷贝frameSize字节的数据到rtpPacket->payload
+        LOG_INFO("send frame:");
+        for (int i = 0; i < frameSize; ++i) {
+            printf("%02x ", frame[i] & 0xFF);
+        }
+        LOG_INFO("\nframe data display end");
         ret = rtpSendPacketOverUdp(serverRtpSockfd, ip, port, rtpPacket, frameSize);
         if (ret < 0) {
             return -1;
@@ -164,12 +170,45 @@ static int rtpSendH264Frame(int serverRtpSockfd, const char* ip, uint16_t port, 
         int remainPktSize = frameSize % RTP_MAX_PKT_SIZE;
         int pos = 1;
         for (int i = 0; i < pktNum; ++i) {
-            // 0x60对应的二进制0110 0000
-            rtpPacket->payload[0] = (naluFirstByte & 0x60) | 28;  // FU indicator
-            rtpPacket->payload[1] = naluFirstByte & 0x1F;  // FU header
+            // 0x60对应的二进制0110 0000，读取NRI值
+            rtpPacket->payload[0] = (naluFirstByte & 0x60) | 28;  // FU indicator, 读取原始的NRI值再置indicator的type为28
+            rtpPacket->payload[1] = naluFirstByte & 0x1F;  // FU header, 读取原始的NALU type
+
+            if (i == 0) {
+                // 第一个包的第二个字节FU header要置S位，0x80=1000 0000(b)
+                rtpPacket->payload[1] |= 0x80;
+            } else if (remainPktSize == 0 && i == pktNum - 1) {
+                // 只有pktNum个包，没有不足RTP_MAX_PKT_SIZE个字节的剩余的数据
+                rtpPacket->payload[1] |= 40;  // 置E位，0x40=0100 0000(b)
+            }
+            // h264码流数据大小为RTP_MAX_PKT_SIZE，在RTP payload中还有两字节的FU数据，故RTP payload数据大小为RTP_MAX_PKT_SIZE + 2
+            memcpy(rtpPacket->payload+2, frame+pos, RTP_MAX_PKT_SIZE);  // pos==1，跳过原始码流的第一个字节，即NALU header，因为该header的数据被包括在FU indicator和FU header中
+            ret = rtpSendPacketOverUdp(serverRtpSockfd, ip, port, rtpPacket, RTP_MAX_PKT_SIZE + 2);  // +2表示FU indicator和header的两字节
+            if (ret < 0) {
+                return -1;
+            }
+            rtpPacket->rtpHeader.seq++;
+            sendBytes += ret;
+            pos += RTP_MAX_PKT_SIZE;
+        }
+        // 发送剩余的数据，至多一个包
+        if (remainPktSize > 0) {
+            rtpPacket->payload[0] = (naluFirstByte & 0x60) | 28;
+            rtpPacket->payload[1] = naluFirstByte & 0x1F;
+            rtpPacket->payload[1] |= 0x40;
+
+            memcpy(rtpPacket->payload+2, frame+pos, remainPktSize);
+            ret = rtpSendPacketOverUdp(serverRtpSockfd, ip, port, rtpPacket, remainPktSize+2);
+            if (ret < 0) {
+                return -1;
+            }
+            rtpPacket->rtpHeader.seq++;
+            sendBytes += ret;
         }
     }
+    rtpPacket->rtpHeader.timestamp += 90000 / 25;
     out:
+    return sendBytes;
 }
 static int handleCmd_OPTIONS(char* result, int cseq) {
     sprintf(result, "RTSP/1.0 200 OK\r\nCSeq: %d\r\nPublic: OPTIONS, DESCRIBE, SETUP, PLAY\r\n\r\n", cseq);
@@ -219,14 +258,15 @@ static void doClient(int clientSockfd, const char* clientIP, int clientPort) {
     char version[40];
     int CSeq;
 
+    int serverRtpSockfd = -1, serverRtcpSockfd = -1;
     int clientRtpPort, clientRtcpPort;
-    char* rBuf = (char*)malloc(10000);
-    char* sBuf = (char*)malloc(10000);
+    char* rBuf = (char*)malloc(BUF_MAX_SIZE);
+    char* sBuf = (char*)malloc(BUF_MAX_SIZE);
 
     while (true) {
         int recvLen;
 
-        recvLen = recv(clientSockfd, rBuf, 2000, 0);
+        recvLen = recv(clientSockfd, rBuf, BUF_MAX_SIZE, 0);
         if (recvLen <= 0)
             break;
         rBuf[recvLen] = '\0';
@@ -270,6 +310,18 @@ static void doClient(int clientSockfd, const char* clientIP, int clientPort) {
                 LOG_ERROR("failed to handle setup\n");
                 break;
             }
+            // 建立两个协议对应的传输通道
+            serverRtpSockfd = createUdpSocket();
+            serverRtcpSockfd = createUdpSocket();
+            if (serverRtpSockfd < 0 || serverRtcpSockfd < 0) {
+                LOG_ERROR("filed to setup rtp or rtcp socket\n");
+                break;
+            }
+            if (bindSocketAddr(serverRtpSockfd, "0.0.0.0", SERVER_RTP_PORT) < 0 ||
+                bindSocketAddr(serverRtcpSockfd, "0.0.0.0", SERVER_RTCP_PORT) < 0) {
+                LOG_ERROR("failed to bind rtp or rtcp socket with according addr\n");
+                break;
+            }
         } else if (!strcmp(method, "PLAY")) {
             if (handleCmd_PLAY(sBuf, CSeq)) {
                 LOG_ERROR("failed to handle play\n");
@@ -285,14 +337,37 @@ static void doClient(int clientSockfd, const char* clientIP, int clientPort) {
         send(clientSockfd, sBuf, strlen(sBuf), 0);
 
         if (!strcmp(method, "PLAY")) {
+            // 服务器通过RTP包推送h264码流数据
+            int frameSize, startCodeBit;
+            char* frame = (char*)malloc(500000);
+            struct RtpPacket* rtpPacket = (struct RtpPacket*)malloc(500000);
+            const char* file_path = "../resource/test.h264";
+            FILE* fp = fopen(file_path, "rb");
+            if (!fp) {
+                LOG_ERROR("读取文件%s失败\n", file_path);
+                break;
+            }
+            rtpHeaderInit(rtpPacket, 0, 0, 0, RTP_VERSION, RTP_PAYLOAD_TYPE_H264, 0, 0, 0, 0X88923423);
             printf("start play.\n");
             printf("client ip: %s\n", clientIP);
             printf("client port:%d\n", clientPort);
-
             while (true) {
+                frameSize = getFrameFromH264File(fp, frame, 500000);
+                if (frameSize < 0) {
+                    LOG_INFO("读取%s结束, frameSize=%d\n", file_path, frameSize);
+                    break;
+                }
+                if (startCode001(frame)) {
+                    startCodeBit = 3;
+                } else {
+                    startCodeBit = 4;
+                }
+                frameSize -= startCodeBit;
+                rtpSendH264Frame(serverRtpSockfd, clientIP, clientRtpPort, rtpPacket, frame + startCodeBit, frameSize);
                 Sleep(40);
             }
-
+            free(frame);
+            free(rtpPacket);
             break;
         }
 
@@ -302,6 +377,12 @@ static void doClient(int clientSockfd, const char* clientIP, int clientPort) {
     }
 
     closesocket(clientSockfd);
+    if (serverRtpSockfd) {
+        closesocket(serverRtpSockfd);
+    }
+    if (serverRtcpSockfd) {
+        closesocket(serverRtcpSockfd);
+    }
     free(rBuf);
     free(sBuf);
 }

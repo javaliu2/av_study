@@ -42,14 +42,16 @@ struct RtpHeader {
     /* byte 8-11 */
     uint32_t ssrc;
 };
-static void func() {
-    sizeof(RtpPacket);  // 12
-    sizeof(RtpHeader);  // 12
-}
+
 struct RtpPacket {
     struct RtpHeader rtpHeader;
     uint8_t payload[0];  // 不占用字节
 };
+
+static void func() {
+    sizeof(RtpPacket);  // 12
+    sizeof(RtpHeader);  // 12
+}
 
 void rtpHeaderInit(struct RtpPacket* rtpPacket, uint8_t csrcLen, uint8_t extension,
 uint8_t padding, uint8_t version, uint8_t payloadType, uint8_t marker, uint16_t seq,
