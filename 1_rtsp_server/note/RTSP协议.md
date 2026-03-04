@@ -25,7 +25,7 @@ C:\Users\23590\Documents\av_study\1_rtsp_server\src\main.cpp rtsp:127.0.0.1:8554
 ```
 4、常见nal_unit_type介绍
 | 值  |  含义 | 全称 |
-| ------------ | ------------ |
+| ------------ | ------------ | ------------ |
 | 1  |  非IDR帧 | |
 | 5  |  IDR帧 | Instantaneous Decoding Refresh(瞬时解码刷新帧) |
 | 6  |  SEI  |  Supplemental Enhancement Infomation(补充增强信息) |
