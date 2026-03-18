@@ -59,7 +59,9 @@ static int bindSocketAddr(int sockfd, const char* ip, int port) {
 
     return 0;
 }
-
+/**
+ * 一共56bit, 7byte
+ */
 struct AdtsHeader {
     unsigned int syncword;  // 12 bit同步字，0xFFF，标志ADTS帧的开始
     uint8_t id;  // 1 bit，0代表MPEG-4，1代表MPEG-2
@@ -114,4 +116,10 @@ static int parseAdtsHeader(uint8_t* in, struct AdtsHeader* res) {
         LOG_INFO("failed to parse adts header.\n");
         return -1;
     }
+}
+
+static int rtpSendAACFrame(int socket, const char* ip, uint16_t port, struct RtpPacket* rtpPacket, uint8_t* frame, uint32_t frameSize) {
+    int ret;
+
+    return 0;
 }
