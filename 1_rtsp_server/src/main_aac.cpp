@@ -120,6 +120,31 @@ static int parseAdtsHeader(uint8_t* in, struct AdtsHeader* res) {
 
 static int rtpSendAACFrame(int socket, const char* ip, uint16_t port, struct RtpPacket* rtpPacket, uint8_t* frame, uint32_t frameSize) {
     int ret;
+    // RTP负载，前四个字节是固定的，后面追加AAC数据
+    rtpPacket->payload[0] = 0x00;
+    rtpPacket->payload[1] = 0x10;
+    rtpPacket->payload[2] = (frameSize & 0x1FE0) >> 5;  // 第三个字节保存AAC数据大小的高8位
+    rtpPacket->payload[3] = (frameSize & 0x1F) << 3;  // 第四个字节的高5位保存数据大小的低5位
 
+    memcpy(rtpPacket->payload + 4, frame, frameSize);
+    ret = rtpSendPacketOverUdp(socket, ip, port, rtpPacket, frameSize + 4);
+    if (ret < 0) {
+        LOG_ERROR("failed to send rtp packet");
+        return -1;
+    }
+    rtpPacket->rtpHeader.seq++;
+    /**
+     * 如果采样频率为44100
+     * 一般AAC每1024个采样为一帧
+     * 所以1秒就有 44100 / 1024 ~= 43帧
+     * 单位时间增量 44100 / 43 ~= 1025
+     * 一帧的时长 1000 / 43 ~= 23ms
+     */
+    rtpPacket->rtpHeader.timestamp += 1025;
+
+    return 0;
+}
+
+int main() {
     return 0;
 }
