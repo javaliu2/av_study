@@ -7,6 +7,3 @@ target_link_libraries(main_h264 PRIVATE ws2_32)  # 链接ws2_32库
 
 add_executable(main_aac ${SRC_DIR}/main_aac.cpp ${SRC_DIR}/rtp.cpp ${SRC_DIR}/rtsp_base.cpp)
 target_link_libraries(main_aac PRIVATE ws2_32)
-
-add_executable(main_off ${SRC_DIR}/main_off.cpp ${SRC_DIR}/rtp.cpp)
-target_link_libraries(main_off PRIVATE ws2_32)
