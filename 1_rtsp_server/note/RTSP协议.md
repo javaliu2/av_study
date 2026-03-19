@@ -123,3 +123,11 @@ Header长度7字节（无CRC），9字节（有CRC）。
 
 64 kbps，44.1 kHz ≈ 185 字节，256 kbps，48 kHz ≈ 682 字节，不会超过1000。RTP_MAX_PKT_SIZE为1400，因此采用单一打包的方式就可以了，一个AAC帧放到一个RTP包里。
 
+## 3.3 制作aac文件
+```c
+ffmpeg -i csf.mp3 -c:a aac -b:a 128k -ar 44100 -f adts test.aac
+```
+**-c:a aac**: 音频编码使用aac
+**-b:a 128k**: 音频码率使用128k
+**-ar 44100**: 采样率44100Hz
+**-f adts**: 封装类型adts
