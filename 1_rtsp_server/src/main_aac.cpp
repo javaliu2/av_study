@@ -97,7 +97,7 @@ static int rtpSendAACFrame(int socket, const char* ip, uint16_t port, struct Rtp
      * 单位时间增量 44100 / 43 ~= 1025
      * 一帧的时长 1000 / 43 ~= 23ms
      */
-    rtpPacket->rtpHeader.timestamp += 1025;
+    rtpPacket->rtpHeader.timestamp += 1024;
 
     return 0;
 }
@@ -224,19 +224,32 @@ static void doClient(int clientSockfd, const char* clientIP, int clientPort) {
                     LOG_ERROR("fread adts header error");
                     break;
                 }
+                #ifdef DEBUG
                 LOG_INFO("fread ret=%d", ret);
+                #endif
                 if (parseAdtsHeader(frame, &adtsHeader) < 0) {
                     LOG_ERROR("parseAdtsHeader error");
                     break;
                 }
-                ret = fread(frame, 1, adtsHeader.aacFrameLength-7, fp);  // aacFrameLength包括头部和aac原始数据，因此这里-7，只读取aac原始数据
+                // 判断是否有CRC
+                int headerSize = 7;
+                if (!adtsHeader.protectionAbsent) {
+                    ret = fread(frame + 7, 1, 2, fp);
+                    if (ret != 2) {
+                        break;
+                    }
+                    headerSize = 9;
+                    LOG_INFO("header size is 9");
+                }
+                ret = fread(frame, 1, adtsHeader.aacFrameLength-headerSize, fp);  // aacFrameLength包括头部和aac原始数据，因此这里-7，只读取aac原始数据
                 if (ret <= 0) {
                     LOG_ERROR("fread aac raw data error");
                     break;
                 }
                 // 这里写错了，应该是clientRtpPort，而不是clientPort。端口错了，传输错地方了，肯定就不对了
-                rtpSendAACFrame(serverRtpSockfd, clientIP, clientRtpPort, rtpPacket, frame, adtsHeader.aacFrameLength-7);
-                Sleep(23);
+                rtpSendAACFrame(serverRtpSockfd, clientIP, clientRtpPort, rtpPacket, frame, adtsHeader.aacFrameLength-headerSize);
+                // Sleep(1024 * 1000 / 44100);  // 卡顿，可能就是由于发送时间太慢
+                Sleep(1);  // 正常播放，无停顿、噪声
             }
             free(frame);
             free(rtpPacket);

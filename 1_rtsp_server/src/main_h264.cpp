@@ -93,16 +93,20 @@ static int rtpSendH264Frame(int serverRtpSockfd, const char* ip, uint16_t port, 
     int ret;
     // 这里传递进来的frame是不包括startCode的
     naluFirstByte = frame[0];
+    #ifdef DEBUG
     LOG_INFO("frameSize=%d\n", frameSize);
+    #endif
     // 这里的frameSize其实是一个NALU的大小
     if (frameSize <= RTP_MAX_PKT_SIZE) {
         // 一个NALU的大小小于RTP包所能支持的最大大小，所以将采用单一NALU模式，即将一个NALU放于一个RTP包中
         memcpy(rtpPacket->payload, frame, frameSize);  // 从frame拷贝frameSize字节的数据到rtpPacket->payload
+        #ifdef DEBUG
         LOG_INFO("send frame:");
         for (int i = 0; i < frameSize; ++i) {
             printf("%02x ", frame[i] & 0xFF);
         }
         LOG_INFO("\nframe data display end");
+        #endif
         ret = rtpSendPacketOverUdp(serverRtpSockfd, ip, port, rtpPacket, frameSize);
         if (ret < 0) {
             return -1;
@@ -154,7 +158,8 @@ static int rtpSendH264Frame(int serverRtpSockfd, const char* ip, uint16_t port, 
             sendBytes += ret;
         }
     }
-    rtpPacket->rtpHeader.timestamp += 90000 / 25;
+    // rtpPacket->rtpHeader.timestamp += 90000 / 25;
+    rtpPacket->rtpHeader.timestamp += 1200000 / 25;
     out:
     return sendBytes;
 }
@@ -272,7 +277,7 @@ static void doClient(int clientSockfd, const char* clientIP, int clientPort) {
                 }
                 frameSize -= startCodeBit;
                 rtpSendH264Frame(serverRtpSockfd, clientIP, clientRtpPort, rtpPacket, frame + startCodeBit, frameSize);
-                Sleep(40);
+                Sleep(1);
             }
             free(frame);
             free(rtpPacket);

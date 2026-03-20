@@ -77,7 +77,7 @@ int handleCmd_DESCRIBE(char* result, int cseq, const char* url) {
     // 即从url中截取主机名
     sscanf(url, "rtsp://%63[^:/]", localIp);
     printf("%s\n", localIp);  // output ok
-    sprintf(sdp, "v=0\r\no=- 9%ld 1 IN IP4 %s\r\nt=0 0\r\na=control:*\r\nm=video 0 RTP/AVP 96\r\na=rtpmap:96 H264/90000\r\na=control:track0\r\n", 
+    sprintf(sdp, "v=0\r\no=- 9%ld 1 IN IP4 %s\r\nt=0 0\r\na=control:*\r\nm=video 0 RTP/AVP 96\r\na=rtpmap:96 H264/1200000\r\na=control:track0\r\n", 
         time(NULL), localIp);
     sprintf(result, "RTSP/1.0 200 OK\r\nCSeq: %d\r\n"
     "Content-Base: %s\r\n"

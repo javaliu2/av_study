@@ -92,12 +92,14 @@ int rtpSendPacketOverUdp(int serverRtpSockfd, const char* ip, uint16_t port, str
     rtpPacket->rtpHeader.seq = htons(rtpPacket->rtpHeader.seq);
     rtpPacket->rtpHeader.timestamp = htonl(rtpPacket->rtpHeader.timestamp);
     rtpPacket->rtpHeader.ssrc = htonl(rtpPacket->rtpHeader.ssrc);
+    #ifdef DEBUG
     LOG_INFO("send rtp payload: ");
     for (int i = 0; i < dataSize; ++i) {
         printf("%02x ", rtpPacket->payload[i]);
     }
     printf("\n");
     LOG_INFO("payload data display end");
+    #endif
     ret = sendto(serverRtpSockfd, (const char*)rtpPacket, dataSize + RTP_HEADER_SIZE, 0, (struct sockaddr*)&addr, sizeof(addr));
     // 字节序回溯，network -> host
     rtpPacket->rtpHeader.seq = ntohs(rtpPacket->rtpHeader.seq);
