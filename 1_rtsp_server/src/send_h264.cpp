@@ -138,8 +138,8 @@ int rtpSendH264Frame(int serverRtpSockfd, const char* ip, uint16_t port, struct 
             sendBytes += ret;
         }
     }
-    // rtpPacket->rtpHeader.timestamp += 90000 / 25;
-    rtpPacket->rtpHeader.timestamp += 1200000 / 25;
+    rtpPacket->rtpHeader.timestamp += 90000 / 25;
+    // rtpPacket->rtpHeader.timestamp += 1200000 / 25;
     out:
     return sendBytes;
 }

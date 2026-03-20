@@ -57,7 +57,7 @@ void rtpHeaderInit(struct RtpPacket* rtpPacket, uint8_t csrcLen, uint8_t extensi
 uint8_t padding, uint8_t version, uint8_t payloadType, uint8_t marker, uint16_t seq,
 uint32_t timestamp, uint32_t ssrc);
 
-int rtpSendPacketOverTcp(int clientSockfd, struct RtpPacket* rtpPacket, uint32_t dataSize);
+int rtpSendPacketOverTcp(int clientSockfd, struct RtpPacket* rtpPacket, uint32_t dataSize, char channel);
 int rtpSendPacketOverUdp(int serverRtpSockfd, const char* ip, uint16_t port, struct RtpPacket* rtpPacket, uint32_t dataSize);
 
 
