@@ -21,7 +21,7 @@ uint32_t timestamp, uint32_t ssrc) {
 /**
  * @param dataSize rtp包负载数据的大小
  */
-int rtpSendPacketOverTcp(int clientSockfd, struct RtpPacket* rtpPacket, uint32_t dataSize) {
+int rtpSendPacketOverTcp(int clientSockfd, struct RtpPacket* rtpPacket, uint32_t dataSize, char channel) {
     // rtpPacket->rtpHeader.seq = htons(rtpPacket->rtpHeader.seq);
     // rtpPacket->rtpHeader.timestamp = htonl(rtpPacket->rtpHeader.timestamp);
     // rtpPacket->rtpHeader.ssrc = htonl(rtpPacket->rtpHeader.ssrc);
@@ -39,7 +39,7 @@ int rtpSendPacketOverTcp(int clientSockfd, struct RtpPacket* rtpPacket, uint32_t
     }
     // 使用TCP发送RTP包时必须加4字节前缀
     tempBuf[0] = 0x24;  // '$', RTSP over TCP的标志
-    tempBuf[1] = 0x00;  // RTP通道，一般0是RTP，1是RTCP
+    tempBuf[1] = channel;  // RTP通道，一般0是RTP，1是RTCP
     tempBuf[2] = (rtpSize >> 8) & 0xFF;  // RTP包长度 高8位
     tempBuf[3] = rtpSize & 0xFF;  // RTP包长度 低8位
     

@@ -5,13 +5,6 @@
 #define SERVER_RTCP_PORT 55533
 #define BUF_MAX_SIZE (1024*1024)
 
-int createTcpSocket();
-
-int createUdpSocket();
-
-int bindSocketAddr(int sockfd, const char* ip, int port);
-int acceptClient(int sockfd, char* ip, int* port);
-
 int handleCmd_OPTIONS(char* result, int cseq);
 
 int handleCmd_DESCRIBE(char* result, int cseq, const char* url);
