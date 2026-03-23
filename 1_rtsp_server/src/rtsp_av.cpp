@@ -59,7 +59,7 @@ int handleCmd_SETUP(char* result, int cseq, int clientRtpPort) {
         "Session: 66334873\r\n"
         "\r\n", 
         cseq);
-    } else if (cseq == 3) {
+    } else if (cseq == 4) {
         sprintf(result, "RTSP/1.0 200 OK\r\n"
         "CSeq: %d\r\n"
         "Transport: RTP/AVP/TCP;unicast;interleaved=2-3\r\n"

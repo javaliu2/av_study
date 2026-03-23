@@ -131,3 +131,25 @@ ffmpeg -i csf.mp3 -c:a aac -b:a 128k -ar 44100 -f adts test.aac
 **-b:a 128k**: 音频码率使用128k
 **-ar 44100**: 采样率44100Hz
 **-f adts**: 封装类型adts
+
+# 4、服务器支持h264和AAC拉取
+
+1、cmd运行ffplay的时候需要显式指定使用tcp协议
+
+```c
+ffplay -rtsp_transport tcp rtsp://127.0.0.1:8554
+```
+
+2、从网站上下载mp4文件，使用ffmpeg提取h264和aac文件，命令如下。
+
+```c
+ffmpeg -i test.mp4 -an -vcodec copy test2.h264
+```
+
+其中-an表示disable audio
+
+```c
+ffmpeg -i test.mp4 -vn -acodec copy test2.aac
+```
+
+其中-vn表示disable video

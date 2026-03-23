@@ -170,7 +170,7 @@ static void doClient(int clientSockfd, const char* clientIP, int clientPort) {
                 int frameSize, startCodeBit;
                 char* frame = (char*)malloc(500000);
                 struct RtpPacket* rtpPacket = (struct RtpPacket*)malloc(500000);
-                const char* file_path = "../resource/test2.h264";
+                const char* file_path = "./resource/test2.h264";
                 FILE* fp = fopen(file_path, "rb");
                 if (!fp) {
                     LOG_ERROR("读取文件%s失败\n", file_path);
@@ -200,7 +200,8 @@ static void doClient(int clientSockfd, const char* clientIP, int clientPort) {
                 struct RtpPacket* rtpPacket;
                 uint8_t* frame;
                 int ret;
-                const char* file_name = "../resource/test2.aac";
+                // 生成的exe文件在build目录下，resource目录也在build目录下，所以是当前路径
+                const char* file_name = "./resource/test2.aac";
                 FILE* fp = fopen(file_name, "rb");
                 if (!fp) {
                     LOG_ERROR("读取 %s 失败", file_name);
