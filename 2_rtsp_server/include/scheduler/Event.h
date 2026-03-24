@@ -37,7 +37,7 @@ public:
     void setTimeoutCallback(EventCallback cb) {
         mTimeoutCallback = cb;
     }
-    void handleEvent();
+    bool handleEvent();
 
     void stop();
 private:
@@ -83,7 +83,7 @@ public:
     }
 
     void enableReadHandling() {
-        mEvent |= EVENT_READ;      
+        mEvent |= EVENT_READ;
     }
     void enableWriteHandling() {
         mEvent |= EVENT_WRITE;
