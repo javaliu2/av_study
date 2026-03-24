@@ -1,5 +1,4 @@
-#ifndef XS_RTSPSERVER_EVENT_H
-#define XS_RTSPSERVER_EVENT_H
+#pragma once
 
 // 定义一种名为 EventCallback 的函数指针类型
 // 该类型定义的变量可以指向的函数为“返回值为void，且形参为任意数据类型的变量”
@@ -120,9 +119,8 @@ private:
     int mFd;
     void* mArg;
     int mEvent;
-    int mREvent;
+    int mREvent;  // R: Ready，已经就绪的事件
     EventCallback mReadCallback;
     EventCallback mWriteCallback;
     EventCallback mErrorCallback;
 };
-#endif
