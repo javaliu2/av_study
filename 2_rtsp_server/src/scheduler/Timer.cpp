@@ -145,4 +145,12 @@ void TimerManager::readCallback(void* arg) {
 
 void TimerManager::handleRead() {
     Timer::Timestamp timestamp = Timer::getCurTime();
+    if (!mTimers.empty() && !mEvents.empty()) {
+        auto it = mEvents.begin();
+        Timer timer = it->second;
+        int expire = timer.mTimestamp - timestamp;  // TimerManager被声明为Timer的友元类，因此其可以直接访问timer的私有属性
+        // auto i = new Timer(NULL, 1, 1, 1);  // 调用私有的构造函数
+        // delete i;
+        
+    }
 }

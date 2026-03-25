@@ -6,6 +6,25 @@
 
 ### 2、friend class是什么东西
 
+友元类，声明的友元类可以访问其所在类的所有成员，不受访问权限的限制
+
+```c++
+class Timer {
+private:
+    friend class TimerManager;  // 声明TimerManager为Timer的友元类
+}
+```
+
+**补充：**
+
+1、友元的本质
+
+友元不是类的成员，而是**权限授权**，打破了 C++ 的封装性 ，仅在需要紧密协作的类之间使用。
+
+2、声明位置不影响效果
+
+友元声明写在private、protected、public区域效果完全一样。
+
 ### 3、时间单位
 
 | 单位 | 符号 | 与秒的关系 | 与纳秒的关系 |
