@@ -1,6 +1,8 @@
 #include "Event.h"
 #include <stdint.h>
 #include "Logger.h"
+
+// ==== IOEvent ====
 IOEvent* IOEvent::createNew(int fd, void* arg) {
     if (fd < 0) {
         return NULL;
@@ -36,4 +38,37 @@ void IOEvent::handleEvent() {
     if (mErrorCallback && (mREvent & EVENT_ERROR)) {
         mErrorCallback(mArg);
     }
+}
+
+// ==== TimerEvent ====
+TimerEvent* TimerEvent::createNew(void* arg) {
+    return new TimerEvent(arg);
+}
+
+TimerEvent* TimerEvent::createNew() {
+    return new TimerEvent(NULL);
+}
+
+TimerEvent::TimerEvent(void* arg) : 
+    mArg(arg), mTimeoutCallback(NULL), mIsStop(false) {
+        LOG_INFO("TimerEvent()");
+}
+
+TimerEvent::~TimerEvent() {
+    LOG_INFO("~TimerEvent()");
+}
+
+bool TimerEvent::handleEvent() {
+    // TODO mIsStop 是谁的停止状态。Timer的还是TimerEvent的？按照OOP原则来说，应该是TimerEvent的
+    if (mIsStop) {
+        return mIsStop;
+    }
+    if (mTimeoutCallback) {
+        mTimeoutCallback(mArg);
+    }
+    return mIsStop;
+}
+
+void TimerEvent::stop() {
+    mIsStop = true;
 }

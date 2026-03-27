@@ -43,7 +43,7 @@ public:
     Timer::TimerId addTimer(TimerEvent* event, Timer::Timestamp timestamp, Timer::TimeInterval timeInterval);
     bool removeTimer(Timer::TimerId timerId);
 private:
-    static void readCallback(void* arg);  // why set be 'static' ?
+    static void readCallback(void* arg);  // TODO why set be 'static' ?
     void handleRead();
     void modifyTimeout();
 private:

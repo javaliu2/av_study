@@ -151,6 +151,20 @@ void TimerManager::handleRead() {
         int expire = timer.mTimestamp - timestamp;  // TimerManager被声明为Timer的友元类，因此其可以直接访问timer的私有属性
         // auto i = new Timer(NULL, 1, 1, 1);  // 调用私有的构造函数
         // delete i;
-        
+        if (timestamp > timer.mTimestamp || expire == 0) {
+            bool timerEventIsStop = timer.handleEvent();
+            mEvents.erase(it);
+            if (timer.mRepeat) {
+                if (timerEventIsStop) {
+                    mTimers.erase(timer.mTimerId);
+                } else {
+                    timer.mTimestamp = timestamp + timer.mTimeInterval;
+                    mEvents.insert(std::make_pair(timer.mTimestamp, timer));
+                }
+            } else {
+                mTimers.erase(timer.mTimerId);
+            }
+        }
     }
+    modifyTimeout();
 }

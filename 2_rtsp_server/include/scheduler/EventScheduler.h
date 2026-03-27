@@ -37,7 +37,7 @@ private:
 
 private:
     bool mQuit;
-    Poller* poller;
+    Poller* mPoller;  // 成员变量的规范命名
     TimerManager* mTimerManager;
     std::vector<TriggerEvent*> mTriggerEvents;
 
