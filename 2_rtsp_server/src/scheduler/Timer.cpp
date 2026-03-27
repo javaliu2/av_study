@@ -45,7 +45,7 @@ Timer::~Timer() {
 Timer::Timestamp Timer::getCurTime() {
 #ifndef WIN32
     struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
+    clock_gettime(CLOCK_MONOTONIC, &now);  // monotonic: 单调时间
     return (now.tv_sec * 1000 + now.tv_nsec / 1000000);  // ms
 #else
     long long now = std::chrono::steady_clock::now().time_since_epoch().count();
@@ -79,6 +79,7 @@ TimerManager::TimerManager(EventScheduler* scheduler) :
     mPoller(scheduler->poller()),
     mLastTimerId(0) {
 #ifndef WIN32
+    // linux系统使用select处理timer事件
     mTimerFd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
     if (mTimerFd < 0) {
         LOG_ERROR("create TimerFd error");
@@ -92,6 +93,7 @@ TimerManager::TimerManager(EventScheduler* scheduler) :
     modifyTimeout();
     mPoller->addIOEvent(mTimerIOEvent);
 #else
+    // windows系统使用单独的线程处理timer事件
     scheduler->setTimerManagerReadCallback(readCallback, this);
 #endif
 }

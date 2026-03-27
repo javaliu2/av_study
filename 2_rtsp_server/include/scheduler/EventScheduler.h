@@ -20,10 +20,10 @@ public:
     virtual ~EventScheduler();
 public:
     bool addTriggerEvent(TriggerEvent* event);
-    Timer::TimerId addTimedEventRunAfter(TimerEvent* event, Timer::TimeInterval delay);
-    Timer::TimerId addTimedEventRunAt(TimerEvent* event, Timer::Timestamp when);
-    Timer::TimerId addTimedEventRunEvery(TimerEvent* event, Timer::TimeInterval interval);
-    bool removeTimedEvent(Timer::TimerId timerId);
+    Timer::TimerId addTimerEventRunAfter(TimerEvent* event, Timer::TimeInterval delay);
+    Timer::TimerId addTimerEventRunAt(TimerEvent* event, Timer::Timestamp when);
+    Timer::TimerId addTimerEventRunEvery(TimerEvent* event, Timer::TimeInterval interval);
+    bool removeTimerEvent(Timer::TimerId timerId);
     bool addIOEvent(IOEvent* event);
     bool updateIOEvent(IOEvent* event);
     bool removeIOEvent(IOEvent* event);

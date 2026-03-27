@@ -3,6 +3,9 @@
 // 定义一种名为 EventCallback 的函数指针类型
 // 该类型定义的变量可以指向的函数为“返回值为void，且形参为任意数据类型的变量”
 typedef void (*EventCallback)(void*);
+/**
+ * TriggerEvent是由程序“主动触发”的事件
+ */
 class TriggerEvent {
 public:
     static TriggerEvent* createNew(void* arg);

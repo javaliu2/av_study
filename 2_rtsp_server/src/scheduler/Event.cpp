@@ -72,3 +72,25 @@ bool TimerEvent::handleEvent() {
 void TimerEvent::stop() {
     mIsStop = true;
 }
+
+// ==== TriggerEvent ====
+TriggerEvent* TriggerEvent::createNew(void* arg) {
+    return new TriggerEvent(arg);
+}
+
+TriggerEvent* TriggerEvent::createNew() {
+    return new TriggerEvent(NULL);
+}
+
+TriggerEvent::TriggerEvent(void* arg) : mArg(arg), mTriggerCallback(NULL) {
+    LOG_INFO("TriggerEvent()");
+}
+TriggerEvent::~TriggerEvent() {
+    LOG_INFO("~TriggerEvent()");
+}
+
+void TriggerEvent::handleEvent() {
+    if(mTriggerCallback) {
+        mTriggerCallback(mArg);
+    }
+}

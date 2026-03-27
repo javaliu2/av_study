@@ -10,6 +10,13 @@ class IOEvent;
 class Timer {
 public:
     typedef uint32_t TimerId;
+    /**
+     * 问：为什么采用int64?
+     * 答：因为时间的计算会出现负数。举例，当前时刻的时间戳now_timestamp为5，
+     * 定时器开始工作的时间戳target_timestamp为6，那么
+     * delta = now_timestamp - target_timestamp = 5 - 6 = -1，负数表示定时器开始工作的时间还没到。
+     * 如果使用uint64，那么会出现下溢，出现crash
+     */
     typedef int64_t Timestamp;  // ms
     typedef uint32_t TimeInterval;  // ms
 
@@ -26,8 +33,8 @@ private:
     bool handleEvent();
 private:
     TimerEvent* mTimerEvent;
-    Timestamp mTimestamp;
-    TimeInterval mTimeInterval;
+    Timestamp mTimestamp;  // 时刻
+    TimeInterval mTimeInterval;  // 时长
     TimerId mTimerId;
 
     bool mRepeat;
