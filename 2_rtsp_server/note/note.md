@@ -36,3 +36,13 @@ private:
 
 ## 2、业务相关
 
+## 3、库函数
+fcntl中F_SETFL和F_SETFD的区别？
+| 对比             | F_SETFL           | F_SETFD      |
+| -------------- | ----------------- | ------------ |
+| 作用对象           | 文件状态（file status） | 文件描述符（fd 本身） |
+| 是否共享（dup/fork） | ✅ 共享              | ❌ 不共享        |
+| 常见 flag        | O_NONBLOCK        | FD_CLOEXEC   |
+| 影响范围           | I/O 行为            | 进程 exec 行为   |
+
+

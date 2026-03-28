@@ -7,6 +7,7 @@
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <netinet/tcp.h>
 #endif
 #include "Logger.h"
 
@@ -40,4 +41,142 @@ int sockets::createUdpSock() {
     return sockfd;
 }
 
+bool sockets::bind(int sockfd, std::string ip, uint16_t port) {
+    struct sockaddr_in addr = { 0 };
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = inet_addr(ip.c_str());
+    addr.sin_port = htons(port);
 
+    if (::bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        LOG_ERROR("::bind error, fd=%d, ip=%s, port=%d", sockfd, ip.c_str(), port);
+        return false;
+    }
+    return true;
+}
+
+bool sockets::listen(int sockfd, int backlog) {
+    if (::listen(sockfd, backlog) < 0) {
+        LOG_ERROR("::listen error, fd=%d, backlog=%d", sockfd, backlog);
+        return false;
+    }
+    return true;
+}
+
+int sockets::accept(int sockfd) {
+    struct sockaddr_in addr = {0};
+    socklen_t addrlen = sizeof(struct sockaddr_in);
+    int connfd = ::accept(sockfd, (struct sockaddr*)&addr, &addrlen);
+    setNonBlockAndCloseOnExec(connfd);
+    ignoreSigPipeOnSocket(connfd);
+    return connfd;
+}
+
+int sockets::write(int sockfd, const void* buf, int size) {
+#ifndef _WIN32
+    return ::write(sockfd, buf, size);
+#endif
+    return ::send(sockfd, (char*)buf, size, 0);
+}
+
+int sockets::sendto(int sockfd, const void* buf, int len,
+        const struct sockaddr* destAddr) {
+    socklen_t addrLen = sizeof(struct sockaddr);
+    return ::sendto(sockfd, (char*)buf, len, 0, destAddr, addrLen);
+}
+
+int sockets::setNonBlock(int sockfd) {
+#ifndef _WIN32
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
+    return 0;
+#else
+    unsigned long ul = 1;
+    int ret = ioctlsocket(sockfd, FIONBIO, (unsigned long*)&ul);
+    if (ret == SOCKET_ERROR) {
+        return -1;
+    } else {
+        return 0; 
+    }
+#endif
+}
+
+int sockets::setBlock(int sockfd, int writeTimeout) {
+#ifndef _WIN32
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    fcntl(sockfd, F_SETFL, flags & (~O_NONBLOCK));
+
+    if (writeTimeout > 0) {
+        struct timeval tv = {writeTimeout / 1000, (writeTimeout % 1000) * 1000};  // 毫秒、微秒
+        setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, (char*)&tv, sizeof(tv));
+    }
+#endif
+    return 0;
+}
+
+void sockets::setReuseAddr(int sockfd, int on)
+{
+    int optval = on ? 1 : 0;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&optval, sizeof(optval));
+}
+
+void sockets::setReusePort(int sockfd)
+{
+#ifdef SO_REUSEPORT
+    int on = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&on, sizeof(on));
+#endif
+}
+
+void sockets::setNonBlockAndCloseOnExec(int sockfd) {
+#ifndef _WIN32
+    int flags = ::fcntl(sockfd, F_GETFL, 0);
+    flags |= O_NONBLOCK;
+    int ret = ::fcntl(sockfd, F_SETFL, flags);
+
+    flags = ::fcntl(sockfd, F_GETFD, 0);
+    flags |= FD_CLOEXEC;
+    ret = ::fcntl(sockfd, F_SETFD, flags);
+#endif
+}
+
+void sockets::ignoreSigPipeOnSocket(int socketfd)
+{
+#ifndef WIN32
+    int option = 1;
+    setsockopt(socketfd, SOL_SOCKET, MSG_NOSIGNAL, &option, sizeof(option));
+#endif
+}
+
+void sockets::setNoDelay(int sockfd) {
+#ifdef TCP_NODELAY
+    int on = 1;
+    int ret = setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char*)&on, sizeof(on));
+    // 关闭Nagle算法，让数据立刻发送，不做小包合并
+#endif
+}
+
+void sockets::setKeepAlive(int sockfd) {
+    int on = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, (char*)&on, sizeof(on));
+    // 开启TCP KeepAlive(保活机制)，用于检测“死连接”
+    // 有三个参数，分别是开始探测时间、探测间隔、探测次数
+    // linux的默认参数值为7200秒、75秒、9次
+    // 这显然不符合常规系统逻辑
+    // 所以在工程上设置合理的参数非常必要
+#ifndef _WIN32
+    int idle = 60;  // 60秒后开始探测(保持多久空闲)
+    int intvl = 10;  // 每10秒探测一次
+    int cnt = 3;  // 连续探测3次
+    setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPIDLE,  &idle,  sizeof(idle));
+    setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl));
+    setsockopt(sockfd, IPPROTO_TCP, TCP_KEEPCNT,   &cnt,   sizeof(cnt));
+#endif
+}
+
+void sockets::setNoSigPipe(int sockfd) {
+#ifdef SO_NOSIGPIPE
+    int on = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_NOSIGPIPE, (char*)&on, sizeof(on));
+    // 防止向已关闭socket写数据时触发SIGPIPE信号
+#endif
+}
