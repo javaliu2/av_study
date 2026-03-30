@@ -3,6 +3,8 @@
 ## 1、cpp相关
 
 ### 1、虚函数和纯虚函数的区别
+有纯虚函数的类为抽象类，不能实例化，提供一种接口规范。子类继承抽象类，要么实现所有纯虚函数，要么继续作为抽象类存在。
+虚函数父类可以有实现，给子类提供功能和扩展，子类继承父类的实现或者重写父类的方法。
 
 ### 2、friend class是什么东西
 
@@ -44,5 +46,29 @@ fcntl中F_SETFL和F_SETFD的区别？
 | 是否共享（dup/fork） | ✅ 共享              | ❌ 不共享        |
 | 常见 flag        | O_NONBLOCK        | FD_CLOEXEC   |
 | 影响范围           | I/O 行为            | 进程 exec 行为   |
+
+## 4、Linux相关
+每个socket本质是一个内核结构（简化理解）：
+```c
+struct socket {
+    本地IP
+    本地端口
+    对端IP
+    对端端口
+    发送缓冲区
+    接收缓冲区
+    状态（ESTABLISHED / LISTEN）
+}
+```
+**listenfd:**
+```c
+状态：LISTEN
+没有对端
+```
+**connfd:**
+```c
+状态：ESTABLISHED
+有完整四元组
+```
 
 

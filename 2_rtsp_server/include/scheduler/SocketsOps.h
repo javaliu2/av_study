@@ -25,7 +25,7 @@ namespace sockets {
     int write(int sockfd, const void* buf, int size);  // tcp写入
     int sendto(int sockfd, const void* buf, int len, const struct sockaddr* destAddr);  // udp写入
     int setNonBlock(int sockfd);
-    int setBlock(int sockfd);
+    int setBlock(int sockfd, int writeTimeout);
     /**
      * Q: 地址重用和端口重用有什么区别？
      * A: 

@@ -180,3 +180,89 @@ void sockets::setNoSigPipe(int sockfd) {
     // 防止向已关闭socket写数据时触发SIGPIPE信号
 #endif
 }
+
+void sockets::setSendBufSize(int sockfd, int size) {
+    setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, (char*)&size, sizeof(size));
+}
+
+void sockets::setRecvBufSize(int sockfd, int size) {
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (char*)&size, sizeof(size));
+}
+
+std::string sockets::getPeerIp(int sockfd) {
+    struct sockaddr_in addr= {0};
+    socklen_t addrlen = sizeof(struct sockaddr_in);
+    if (getpeername(sockfd, (struct sockaddr*)&addr, &addrlen) == 0) {
+        return inet_ntoa(addr.sin_addr);
+    }
+    return "0.0.0.0";
+}
+
+uint16_t sockets::getPeerPort(int sockfd) {
+    struct sockaddr_in addr= {0};
+    socklen_t addrlen = sizeof(struct sockaddr_in);
+    if (getpeername(sockfd, (struct sockaddr*)&addr, &addrlen) == 0) {
+        return ntohs(addr.sin_port);
+    }
+    return 0;
+}
+
+int sockets::getPeerAddr(int sockfd, struct sockaddr_in* addr) {
+    socklen_t addrlen = sizeof(struct sockaddr_in);
+    return getpeername(sockfd, (struct sockaddr*)addr, &addrlen);
+}
+
+void sockets::close(int sockfd) {
+#ifndef _WIN32
+    ::close(sockfd);
+#else
+    ::closesocket(sockfd);
+#endif
+}
+
+bool sockets::connect(int sockfd, std::string ip, uint16_t port, int timeout) {
+    if (timeout > 0) {
+        sockets::setNonBlock(sockfd);
+    }
+    struct sockaddr_in addr = {0};
+    socklen_t addrlen = sizeof(addr);
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = inet_addr(ip.c_str());
+
+    int ret = ::connect(sockfd, (struct sockaddr*)&addr, addrlen);
+    if (ret == 0) {
+        return true;
+    }
+    if (timeout <= 0) {
+        return false;
+    }
+    if (errno != EINPROGRESS) {
+        return false;
+    }
+
+    fd_set fdWrite;
+    FD_ZERO(&fdWrite);
+    FD_SET(sockfd, &fdWrite);
+
+    struct timeval tv = {timeout / 1000, (timeout % 1000) * 1000};
+    ret = select(sockfd + 1, NULL, &fdWrite, NULL, &tv);
+    if (ret <= 0) {
+        return false;
+    }
+    // socket上可写，可能是连接建立成功或者失败
+    if (FD_ISSET(sockfd, &fdWrite)) {
+        int err = 0;
+        socklen_t len = sizeof(err);
+        getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (char*)&err, &len);
+        if (err == 0) {
+            sockets::setBlock(sockfd, 0);
+            return true;
+        }
+    } 
+    return false;
+}
+
+std::string sockets::getLocalIp() {
+    return "0.0.0.0";
+}
