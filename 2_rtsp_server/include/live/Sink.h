@@ -35,7 +35,7 @@ private:
     void handleTimeout();
 
 protected:
-    UsageEnvironment* env;
+    UsageEnvironment* mEnv;
     MediaSource* mMediaSource;
     SessionSendPacketCallback mSessionSendPacketCb;
     void* mArg1;

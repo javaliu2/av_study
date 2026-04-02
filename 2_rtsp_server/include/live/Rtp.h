@@ -56,7 +56,7 @@ public:
 public:
     uint8_t* mBuf;  // 4+rtpHeader+rtpBody
     uint8_t* mBuf4;  // rtpHeader+rtpBody
-    RtpHeader* const mRtpHeader;
+    RtpHeader* const mRtpHeader;  // TODO const为什么要这样设置，是不是写错位置了？
     int mSize;  // rtpHeader + rtpBody
 };
 

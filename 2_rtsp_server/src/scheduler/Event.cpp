@@ -51,7 +51,7 @@ TimerEvent* TimerEvent::createNew() {
 
 TimerEvent::TimerEvent(void* arg) : 
     mArg(arg), mTimeoutCallback(NULL), mIsStop(false) {
-        LOG_INFO("TimerEvent()");
+    LOG_INFO("TimerEvent()");
 }
 
 TimerEvent::~TimerEvent() {
