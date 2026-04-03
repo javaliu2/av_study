@@ -21,7 +21,7 @@ private:
         unsigned int profile;  // 1 bit 表示使用哪个级别的AAC
         unsigned int samplingFreqIndex;  // 4 bit 表示使用的采样频率索引
         unsigned int privateBit;  // 1 bit
-        unsigned int channekCfg; // 3 bit
+        unsigned int channelCfg; // 3 bit
         unsigned int originalCopy;  // 1 bit
         unsigned int home;  // 1 bit
 

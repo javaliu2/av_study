@@ -57,7 +57,15 @@ unique_lock = 功能完整的智能锁（可控、可转移、可配合条件变
 | 性能                    | 更轻量        | 稍重          |
 
 ## 2、业务相关
-
+### 1、AAC中AudioSpecificConfig字段
+在SDP中通常使用两个字节表示，第一个字节高5位是object type，低3位是采样率索引index的高3位；
+第二个字节的高1位是index的低1位，第6到第3位是channel
+👉 第1个字节（8 bits）
+| b7 b6 b5 b4 b3 | b2 b1 b0 |
+| object type    | freq idx 高3位 |
+👉 第2个字节（8 bits）
+| b7        | b6 b5 b4 b3 | b2 b1 b0 |
+| freq低1位 | channel cfg | 备用 |
 ## 3、库函数
 fcntl中F_SETFL和F_SETFD的区别？
 | 对比             | F_SETFL           | F_SETFD      |

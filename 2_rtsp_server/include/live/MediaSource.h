@@ -6,7 +6,8 @@
 #include "UsageEnvironment.h"
 #include "ThreadPool.h"
 
-// TODO 这个帧大小指的是哪一个帧
+// Q: 这个帧大小指的是哪一个帧
+// A: 指的是 视频帧 或者 音频帧
 #define FRAME_MAX_SIZE (1024*200)
 #define DEFAULT_FRAME_NUM 4
 
