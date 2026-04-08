@@ -114,12 +114,14 @@ void SelectPoller::handleEvent() {
             rEvent |= IOEvent::EVENT_ERROR;
         }
         if (rEvent != 0) {
-            it->second->setREvent(rEvent);
+            // rEvent是由自定义事件值设置的，所以handleEvent里面才可以使用mREvent和EVENT_READ等做&来比较是否发生了该事件
+            it->second->setREvent(rEvent);  
             mIOEvents.push_back(it->second);
         }
     }
-    for (auto& ioEvent : mIOEvents) {
-        ioEvent->handleEvent();
+    for (auto& ioEvent : mIOEvents) {  // 指针变量的引用
+        ioEvent->handleEvent();  // 方法的调用，如果方法修改了指针指向的对象，那么vector中的对象也会改变
+        // 不是指针的引用的话，也会改变，因为是指针变量
     }
     mIOEvents.clear();
 }

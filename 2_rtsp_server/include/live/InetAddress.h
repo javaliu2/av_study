@@ -22,6 +22,6 @@ public:
     struct sockaddr* getAddr() const;
 private:
     std::string mIp;
-    uint16_t port;
+    uint16_t mPort;
     struct sockaddr_in mAddr;
 };

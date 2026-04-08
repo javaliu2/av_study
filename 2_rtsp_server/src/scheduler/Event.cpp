@@ -18,9 +18,8 @@ IOEvent* IOEvent::createNew(int fd) {
 }
 
 IOEvent::IOEvent(int fd, void* arg) : mFd(fd), mArg(arg), 
-mEvent(EVENT_NONE), mREvent(EVENT_NONE), 
-mReadCallback(NULL), mWriteCallback(NULL), mErrorCallback(NULL)
-{
+    mEvent(EVENT_NONE), mREvent(EVENT_NONE), 
+    mReadCallback(NULL), mWriteCallback(NULL), mErrorCallback(NULL) {
     LOG_INFO("IOEvent() fd=%d", mFd);
 }
 
