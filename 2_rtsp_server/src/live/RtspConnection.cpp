@@ -53,3 +53,194 @@ RtspConnection::~RtspConnection() {
         }
     }
 }
+/* 解析method、url、version三个字段
+ * @param begin 指向所解析字符串的起始位置，include
+ * @param end   指向所解析字符串的终止位置，exclude
+*/
+bool RtspConnection::parseRequest1(const char* begin, const char* end) {
+    std::string message(begin, end);
+    char method[64] = {0};
+    char url[512] = {0};
+    char version[64] = {0};
+
+    if (sscanf(message.c_str(), "%s %s %s", method, url, version) != 3) {
+        return false;
+    }
+
+    if (!strcmp(method, "OPTIONS")) {
+        mMethod = OPTIONS;
+    } else if (!strcmp(method, "DESCRIBE")) {
+        mMethod = DESCRIBE;
+    } else if (!strcmp(method, "SETUP")) {
+        mMethod = SETUP;
+    } else if (!strcmp(method, "PALY")) {
+        mMethod = PLAY;
+    } else if (!strcmp(method, "TEARDOWN")) {
+        mMethod = TEARDOWN;
+    } else {
+        mMethod = NONE;
+        return false;
+    }
+
+    if (strncmp(url, "rtsp://", 7) != 0) {
+        return false;
+    }
+
+    uint16_t port = 0;
+    char ip[64] = {0};
+    char suffix[64] = {0};
+    /*
+    * hu: half unsigned, 即short int
+    * %[^:]表示连续匹配不是':'的字符
+    * 后面的:表示肯定有一个:
+    * pattern: ip:port/path
+    */
+    if (sscanf(url + 7, "%[^:]:%hu/%s", ip, &port, suffix) == 3) {
+
+    } else if (sscanf(url + 7, "%[^/]/%s", ip, suffix) == 2) {
+        port = 554;  // 如果rtsp请求地址中无端口，默认获取的端口为554
+    } else {
+        return false;
+    }
+    mUrl = url;
+    mSuffix = suffix;
+    return true;  // 解析成功
+}
+
+bool RtspConnection::parseRequest() {
+    // 解析第一行
+    const char* crlf = mInputBuffer.findCRLF();
+    if (crlf == nullptr) {
+        mInputBuffer.retrieveAll();  // 该函数不是很理解？
+        // 找不到换行，说明数据不完整/错误
+        return false;
+    }
+    // 示例: OPTIONS rtsp://10.45.12.141:554/h264/ch1/main/av_stream RTSP/1.0
+    bool ret = parseRequest1(mInputBuffer.peek(), crlf);
+    if (ret == false) {
+        mInputBuffer.retrieveAll();
+        return false;
+    } else {  // 解析成功，将这一行从mInputBuffer中移除（逻辑删除，只修改指针的位置）
+        mInputBuffer.retrieveUntil(crlf + 2);
+    }
+
+    // 解析第一行之后的所有行
+    crlf = mInputBuffer.findLastCrlf();
+    if (crlf == nullptr) {
+        mInputBuffer.retrieveAll();  // 报文非法，清空缓冲区
+        return false;
+    }
+    ret = parseRequest2(mInputBuffer.peek(), crlf);
+    if (ret == false) {
+        mInputBuffer.retrieveAll();  // 解析失败，清空缓冲区
+        return false;
+    } else {
+        mInputBuffer.retrieveUntil(crlf + 2);  // 解析成功，将解析过的数据清空
+        return true;
+    }
+}
+
+bool RtspConnection::parseRequest2(const char* begin, const char* end) {
+    std::string message(begin, end);
+    if (!parseCSeq(message)) {
+        return false;
+    }
+    if (mMethod == OPTIONS) {
+        return true;  // 没什么需要check的，直接返回true
+    } else if (mMethod == DESCRIBE) {
+        return parseDescribe(message);
+    } else if (mMethod == SETUP) {
+        return parseSetup(message);
+    } else if (mMethod == PLAY) {
+        return parsePlay(message);
+    } else if (mMethod == TEARDOWN) {  // 表示终止会话，服务器端需要安全释放资源
+        return true;
+    }
+    return false;
+}
+
+bool RtspConnection::parseCSeq(std::string& message) {
+    std::size_t pos = message.find("CSeq");
+    // LOG_DEBUG("pos: %d", pos);
+    if (pos != std::string::npos) {  // npos是固定常量
+        uint32_t cseq = 0;
+        /**
+         * %*[^:]: %u中*表示忽略匹配到的内容，不存到变量
+         * 整体意思: 读取并忽略从CSeq开始到冒号前的所有内容
+         */
+        // LOG_DEBUG("message + pos: %s", message.c_str() + pos);
+        sscanf(message.c_str() + pos, "%*[^:]: %u", &cseq);  // 注意这里有一个space
+        mCSeq = cseq;
+        return true;
+    }
+    return false;
+}
+
+bool RtspConnection::parseDescribe(std::string& message) {
+    // TODO 不理解这里
+    if (message.rfind("Accept") == std::string::npos
+        || message.rfind("sdp") == std::string::npos) {
+        return false;
+    }
+    return true;
+}
+
+bool RtspConnection::parseSetup(std::string& message) {
+    mTrackId = MediaSession::TrackIdNone;
+    std::size_t pos;
+    for (int i = 0; i < MEDIA_MAX_TRACK_NUM; ++i) {
+        pos = mUrl.find(mStreamPrefix + std::to_string(i));
+        if (pos != std::string::npos) {
+            if (i == 0) {
+                mTrackId = MediaSession::TrackId0;
+            } else if (i == 1) {
+                mTrackId = MediaSession::TrackId1;
+            }
+        }
+    }
+    if (mTrackId == MediaSession::TrackIdNone) {
+        return false;
+    }
+    pos = message.find("Transport");
+    if (pos != std::string::npos) {
+        if ((pos = message.find("RTP/AVP/TCP")) != std::string::npos) {
+            uint8_t rtpChannel, rtcpChannel;
+            mIsRtpOverTcp = true;
+            // 实例: Transport: RTP/AVP/TCP;unicast;interleaved=0-1
+            // %hhu一个half是short int, 两个 half 就是8位int
+            if (sscanf(message.c_str() + pos, "%*[^;];%*[^;];%*[^=]=%hhu-%hhu", &rtpChannel, &rtcpChannel) != 2) {
+                return false;
+            }
+            mRtpChannel = rtpChannel;
+        } else if ((pos = message.find("RTP/AVP")) != std::string::npos) {
+            uint16_t rtpPort = 0, rtcpPort = 0;
+            // 实例: Transport: RTP/AVP;unicast;client_port=63538-63539
+            if (sscanf(message.c_str() + pos, "%*[^;];%*[^;];%*[^=]=%hu-%hu", &rtpPort, &rtcpPort) != 2) {
+                return false;
+            } else if (message.find("multicast", pos) != std::string::npos) {
+                return true;  // Q: 这啥意思?
+                // A: 如果是组播，直接返回成功
+            } else {
+                return false;
+            }
+            mPeerRtpPort = rtpPort;
+            mPeerRtcpPort = rtcpPort;
+        } else {
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool RtspConnection::parsePlay(std::string& message) {
+    std::size_t pos = message.find("Session");
+    if (pos != std::string::npos) {
+        uint32_t sessionId = 0;
+        if (sscanf(message.c_str() + pos, "%*[^:]: %u", &sessionId) != 1) {
+            return false;  // 解析失败
+        }
+        return true;
+    }
+    return false;  // 没有Session字段
+}

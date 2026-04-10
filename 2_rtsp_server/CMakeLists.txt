@@ -10,6 +10,9 @@ add_executable(map_study ${STUDY_SRC}/map_test.cpp)
 add_executable(vector_test ${STUDY_SRC}/vector_test.cpp)
 add_executable(file_test ${STUDY_SRC}/file_test.cpp)
 add_executable(static_test ${STUDY_SRC}/static_test.cpp)
+add_executable(string_test ${STUDY_SRC}/string_test.cpp)
+add_executable(ObjectComposition_test ${STUDY_SRC}/ObjectComposition_test.cpp)
+
 
 # 递归搜索所有头文件
 file(GLOB_RECURSE HEADER_FILES

@@ -65,6 +65,9 @@ public:
         // 自定义函数（本次读取的数据不全，已读取的数据归零，重新从头读取）
         mReadIndex = 0;
     }
+    /**
+     * 清空整个缓冲区
+     */
     void retrieveAll() {
         mReadIndex = 0;
         mWriteIndex = 0;
@@ -77,6 +80,9 @@ public:
             retrieveAll();
         }
     }
+    /**
+     * 将peek()至end的数据标记为已读
+     */
     void retrieveUntil(const char* end) {
         assert(peek() <= end);
         assert(beginWrite() >= end);
