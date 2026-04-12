@@ -244,3 +244,38 @@ bool RtspConnection::parsePlay(std::string& message) {
     }
     return false;  // 没有Session字段
 }
+
+bool RtspConnection::handleCmdOption() {
+    // 向缓冲区mBuffer最多写入sizeof(mBuffer)-1个字符
+    snprintf(mBuffer, sizeof(mBuffer),
+    "RTSP/1.0 200 OK\r\n"
+    "CSeq: %u\r\n"
+    "Public: DESCRIBE, ANNOUNCE, SETUP, PLAY, RECORD, PAUSE, GET_PARAMETER, TEARDOWN\r\n"
+    "Server: %s\r\n"
+    "\r\n", mCSeq, PROJECT_VERSION);
+
+    if (sendMessage(mBuffer, strlen(mBuffer)) < 0) {
+        return false;
+    }
+    return true;
+}
+
+bool RtspConnection::handleCmdDescribe() {
+    MediaSession* session = mRtspServer->mSessMgr->getSession(mSuffix);
+    
+
+}
+int RtspConnection::sendMessage(void* buf, int size) {
+    LOG_INFO("%s", buf);
+    int ret;
+    mOutBuffer.append(buf, size);
+    ret = mOutBuffer.write(mClientFd);
+    mOutBuffer.retrieveAll();
+    return ret;
+}
+
+int RtspConnection::sendMessage() {
+    int ret = mOutBuffer.write(mClientFd);
+    mOutBuffer.retrieveAll();
+    return ret;
+}
