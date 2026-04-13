@@ -36,7 +36,7 @@ public:
 private:
     class Track {
     public:
-        Sink* sink;
+        Sink* mSink;
         int mTrackId;
         bool mIsAlive;
         std::list<RtpInstance*> mRtpInstances;

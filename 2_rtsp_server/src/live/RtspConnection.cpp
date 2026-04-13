@@ -262,8 +262,28 @@ bool RtspConnection::handleCmdOption() {
 
 bool RtspConnection::handleCmdDescribe() {
     MediaSession* session = mRtspServer->mSessMgr->getSession(mSuffix);
-    
+    if (!session) {
+        LOG_ERROR("can't find session: %s", mSuffix.c_str());
+        return false;
+    }
+    std::string sdp = session->generateSdpDescription();
+    memset((void*)mBuffer, 0, sizeof(mBuffer));
+    snprintf((char*)mBuffer, sizeof(mBuffer), 
+            "RTSP/1.0 200 OK\r\n"
+            "CSeq: %u\r\n"
+            "Content-Length: %u\r\n"
+            "Content-Type: application/sdp\r\n"
+            "\r\n"
+            "%s",
+            mCSeq, (unsigned int)sdp.size(), sdp.c_str());
+    if (sendMessage(mBuffer, strlen(mBuffer)) < 0) {
+        return false;
+    }
+    return true;
+}
 
+bool RtspConnection::handleCmdSetup() {
+    
 }
 int RtspConnection::sendMessage(void* buf, int size) {
     LOG_INFO("%s", buf);
