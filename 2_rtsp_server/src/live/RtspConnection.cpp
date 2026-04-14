@@ -283,8 +283,110 @@ bool RtspConnection::handleCmdDescribe() {
 }
 
 bool RtspConnection::handleCmdSetup() {
-    
+    char sessionName[100] = {0};
+    // TODO 不懂这个mSuffix长什么样，sessionName长什么样
+    LOG_DEBUG("mSuffix: %s", mSuffix.c_str());
+    if (sscanf(mSuffix.c_str(), "%[^/]/", sessionName) != 1) {
+        return false;
+    }
+    LOG_DEBUG("sessionName: %s", sessionName);
+    MediaSession* session = mRtspServer->mSessMgr->getSession(sessionName);
+    if (!session) {
+        LOG_ERROR("can not find session: %s", sessionName);
+        return false;
+    }
+    // mTrackId不合法 或者 已经有rtp或者rtcp的实例（表明已经setup过了）
+    if (mTrackId >= MEDIA_MAX_TRACK_NUM || mRtpInstances[mTrackId] || mRtcpInstances[mTrackId]) {
+        return false;
+    }
+    if (session->isStartMulticast()) {
+        snprintf((char*)mBuffer, sizeof(mBuffer),
+                "RTSP/1.0 200 OK\r\n"
+                "CSeq: %d\r\n"
+                "Transport: RTP/AVP;multicast;"
+                "destination=%s;source=%s;port=%d-%d;ttl=255\r\n"
+                "Session: %08x\r\n"
+                "\r\n", 
+                mCSeq, session->getMulticastDestAddr().c_str(),
+                sockets::getLocalIp().c_str(), 
+                session->getMulticastDestRtpPort(mTrackId),
+                session->getMulticastDestRtpPort(mTrackId)+1,
+                mSessionId);
+    } else {
+        if (mIsRtpOverTcp) {
+            // 创建 rtp over tcp
+            createRtpOverTcp(mTrackId, mClientFd, mRtpChannel);  // 在解析setup请求中完成了字段mTrackId、mRtpChannel、mIsRtpOverTcp的赋值
+            mRtpInstances[mTrackId]->setSessionId(mSessionId);
+            
+            session->addRtpInstance(mTrackId, mRtpInstances[mTrackId]);
+            snprintf((char*)mBuffer, sizeof(mBuffer),
+                    "RTSP/1.0 200 OK\r\n"
+                    "CSeq: %d\r\n"
+                    "Server: %s\r\n"
+                    "Transport: RTP/AVP/TCP;unicast;interleaved=%hhu-%hhu\r\n"
+                    "Session: %08x\r\n"
+                    "\r\n", mCSeq, PROJECT_VERSION, mRtpChannel, mRtpChannel+1, mSessionId);
+        } else {
+            // 创建 rtp over udp
+            if (createRtpRtcpOverUdp(mTrackId, mPeerIp, mPeerRtpPort, mPeerRtcpPort) != true) {
+                LOG_ERROR("failed to createRtpRtcpOverUdp");
+                return false;
+            }
+            mRtpInstances[mTrackId]->setSessionId(mSessionId);
+            mRtcpInstances[mTrackId]->setSessionId(mSessionId);
+            session->addRtpInstance(mTrackId, mRtpInstances[mTrackId]);
+
+            snprintf((char*)mBuffer, sizeof(mBuffer),
+                    "RTSP/1.0 200 OK\r\n"
+                    "CSeq: %d\r\n"
+                    "Server: %s\r\n"
+                    "Transport: RTP/AVP;unicast;client_port=%hu-%hu;server_port=%hu-%hu\r\n"
+                    "Session: %08x\r\n"
+                    "\r\n", mCSeq, PROJECT_VERSION, mPeerRtpPort, mPeerRtcpPort, 
+                    mRtpInstances[mTrackId]->getLocalPort(), mRtcpInstances[mTrackId]->getLocalPort(),
+                    mSessionId);
+        }
+    }
+    if (sendMessage(mBuffer, strlen(mBuffer)) < 0) {
+        return false;
+    }
+    return true;
 }
+
+bool RtspConnection::handleCmdPlay() {
+    snprintf((char*)mBuffer, sizeof(mBuffer),
+            "RTSP/1.0 200 OK\r\n"
+            "CSeq: %d\r\n"
+            "Server: %s\r\n"
+            "Range: npt=0.000-\r\n"
+            "Session: %08x; timeout=60\r\n"
+            "\r\n", mCSeq, PROJECT_VERSION, mSessionId);
+    if (sendMessage(mBuffer, strlen(mBuffer)) < 0) {
+        return false;
+    }
+    for (int i = 0; i < MEDIA_MAX_TRACK_NUM; ++i) {
+        if (mRtpInstances[i]) {
+            mRtpInstances[i]->setAlive(true);
+        }
+        if (mRtcpInstances[i]) {
+            mRtcpInstances[i]->setAlive(true);
+        }
+    }
+    return true;
+}
+
+bool RtspConnection::handleCmdTeardown() {
+    snprintf((char*)mBuffer, sizeof(mBuffer),
+            "RTSP/1.0 200 OK\r\n"
+            "CSeq: %d\r\n"
+            "Server: %s\r\n"
+            "\r\n", mCSeq, PROJECT_VERSION);
+    if (sendMessage(mBuffer, strlen(mBuffer)) < 0) {
+        return false;
+    }
+    return true;
+}
+
 int RtspConnection::sendMessage(void* buf, int size) {
     LOG_INFO("%s", buf);
     int ret;

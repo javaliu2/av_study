@@ -49,7 +49,7 @@ private:
     std::string mSessionName;
     std::string mSdp;
     Track mTracks[MEDIA_MAX_TRACK_NUM];
-    bool mIsStartMulticast;
+    bool mIsStartMulticast;  // attention. 这里是组播，而不是广播
     std::string mMulticastAddr;
     RtpInstance* mMulticastRtpInstances[MEDIA_MAX_TRACK_NUM];
     RtcpInstance* mMulticastRtcpInstances[MEDIA_MAX_TRACK_NUM];
