@@ -1,6 +1,6 @@
-#include "Sink.h"
-#include "SocketsOps.h"
-#include "Logger.h"
+#include "live/Sink.h"
+#include "scheduler/SocketsOps.h"
+#include "base/Logger.h"
 
 Sink::Sink(UsageEnvironment* env, MediaSource* mediaSource, int payloadType) : 
     mMediaSource(mediaSource), mEnv(env), mCsrcLen(0), mExtension(0),

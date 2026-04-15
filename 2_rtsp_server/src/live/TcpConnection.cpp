@@ -1,6 +1,6 @@
-#include "TcpConnection.h"
-#include "SocketsOps.h"
-#include "Logger.h"
+#include "live/TcpConnection.h"
+#include "scheduler/SocketsOps.h"
+#include "base/Logger.h"
 
 TcpConnection::TcpConnection(UsageEnvironment* env, int clientFd) :
     mEnv(env), mClientFd(clientFd) {

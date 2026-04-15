@@ -5,7 +5,7 @@
 #include <unistd.h>
 #endif
 #include "InetAddress.h"
-#include "SocketsOps.h"
+#include "scheduler/SocketsOps.h"
 #include "Rtp.h"
 
 class RtpInstance {

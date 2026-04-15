@@ -1,12 +1,12 @@
-#include "RtspConnection.h"
-#include "RtspServer.h"
+#include "live/RtspConnection.h"
+#include "live/RtspServer.h"
 #include <stdio.h>
 #include <string.h>
-#include "Rtp.h"
-#include "MediaSession.h"
-#include "MediaSessionManager.h"
-#include "Logger.h"
-#include "Version.h"
+#include "live/Rtp.h"
+#include "live/MediaSession.h"
+#include "live/MediaSessionManager.h"
+#include "base/Logger.h"
+#include "base/Version.h"
 /**
  * 该cpp文件作用域内的辅助函数，G-bro推荐使用namespace包裹变量和函数
  * 注意，他不是类函数，类函数在cpp实现的时候，必须不能加static，否则发生语义冲突
@@ -400,4 +400,142 @@ int RtspConnection::sendMessage() {
     int ret = mOutBuffer.write(mClientFd);
     mOutBuffer.retrieveAll();
     return ret;
+}
+// TODO 不太懂这个handle
+void RtspConnection::handleReadBytes() {
+    if (mIsRtpOverTcp) {
+        if (mInputBuffer.peek()[0] == '$') {
+            handleRtpOverTcp();
+            return;
+        }
+    }
+    if (!parseRequest()) {
+        LOG_ERROR("parseRequest error");
+        goto disConnect;
+    }
+    switch(mMethod) {
+        case OPTIONS:
+            if (!handleCmdOption()) {
+                goto disConnect;
+            }
+            break;
+        case DESCRIBE:
+            if (!handleCmdDescribe()) {
+                goto disConnect;
+            }
+            break;
+        case SETUP:
+            if (!handleCmdSetup()) {
+                goto disConnect;
+            }
+            break;
+        case PLAY:
+            if (!handleCmdPlay()) {
+                goto disConnect;
+            }
+            break;
+        case TEARDOWN:
+            if (!handleCmdTeardown()) {
+                goto disConnect;
+            }
+            break;
+        default:
+            goto disConnect;
+    }
+disConnect:
+    handleDisConnect();
+}
+
+// 创建服务器上的Rtp实例(over tcp)
+bool RtspConnection::createRtpOverTcp(MediaSession::TrackId trackId, int sockfd, uint8_t rtpChannel) {
+    mRtpInstances[trackId] = RtpInstance::createNewOverTcp(sockfd, rtpChannel);
+    return true;
+}
+
+void RtspConnection::handleRtpOverTcp() {
+    int num = 0;
+    while (true) {
+        num += 1;
+        uint8_t* buf = (uint8_t*)mInputBuffer.peek();
+        // 前四个字节分别是
+        // 1)魔方符号'$'; 2)channel; 3)rtp包大小的高8位; 4)rtp包大小的低8位
+        uint8_t rtpChannel = buf[1];
+        int16_t rtpSize = (buf[2] << 8) | buf[3];
+        int16_t bufSize = 4 + rtpSize;
+        if (mInputBuffer.readableBytes() < bufSize) {
+            // 缓存数据小于一个RTP数据包的长度
+            return;
+        } else {
+            if (0x00 == rtpChannel) {
+                RtpHeader rtpHeader;
+                parseRtpHeader(buf+4, &rtpHeader);
+                LOG_INFO("num=%d, rtpSize=%d", num, rtpSize);
+            } else if (0x01 == rtpChannel) {
+                RtcpHeader rtcpHeader;
+                parseRtcpHeader(buf+4, &rtcpHeader);
+                LOG_INFO("num=%d, rtcpHeader.packetType=%d, rtpSize=%d", num, rtcpHeader.packetType, rtpSize);
+            } else if (0x02 == rtpChannel) {
+                RtpHeader rtpHeader;
+                parseRtpHeader(buf+4, &rtpHeader);
+                LOG_INFO("num=%d, rtpSize=%d", num, rtpSize);
+            } else if (0x03 == rtpChannel) {
+                RtcpHeader rtcpHeader;
+                parseRtcpHeader(buf+4, &rtcpHeader);
+                LOG_INFO("num=%d, rtcpHeader.packetType=%d, rtpSize=%d", num, rtcpHeader.packetType, rtpSize);
+            }
+            mInputBuffer.retrieve(bufSize);
+        }
+    }
+}
+
+// 创建服务器上的Rtp和Rtcp实例(over udp)
+bool RtspConnection::createRtpRtcpOverUdp(MediaSession::TrackId trackId, std::string peerIp,
+                                          uint16_t peerRtpPort, uint16_t peerRtcpPort) {
+    int rtpSockfd, rtcpSockfd;
+    uint16_t rtpPort, rtcpPort;
+    bool ret;
+    // 已经创建过了
+    if (mRtpInstances[trackId] || mRtcpInstances[trackId]) {
+        return false;
+    }
+    int i = 0;
+    for (i = 0; i < 10; ++i) {
+        rtpSockfd = sockets::createUdpSock();
+        if (rtpSockfd < 0) {
+            return false;
+        }
+        rtcpSockfd = sockets::createUdpSock();
+        if (rtcpSockfd < 0) {
+            sockets::close(rtpSockfd);
+            return false;
+        }
+
+        uint16_t port = rand() & 0xfffe;
+        if (port < 10000) {
+            port += 10000;
+        }
+        rtpPort = port;
+        rtcpPort = port + 1;
+
+        ret = sockets::bind(rtpSockfd, "0.0.0.0", rtpPort);
+        if (ret != true) {
+            sockets::close(rtpSockfd);
+            sockets::close(rtcpSockfd);
+            continue;
+        }
+        ret = sockets::bind(rtcpSockfd, "0.0.0.0", rtcpPort);
+        if (ret != true) {
+            sockets::close(rtpSockfd);
+            sockets::close(rtcpSockfd);
+            continue;
+        }
+        break;
+    }
+    // 10次都失败了
+    if (i == 10) {
+        return false;
+    }
+    mRtpInstances[trackId] = RtpInstance::createNewOverUdp(rtpSockfd, rtpPort, peerIp, peerRtpPort);
+    mRtcpInstances[trackId] = RtcpInstance::createNew(rtcpSockfd, rtcpPort, peerIp, peerRtcpPort);
+    return true;
 }

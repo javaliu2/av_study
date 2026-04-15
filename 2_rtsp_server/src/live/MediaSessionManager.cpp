@@ -1,5 +1,5 @@
-#include "MediaSessionManager.h"
-#include "MediaSession.h"
+#include "live/MediaSessionManager.h"
+#include "live/MediaSession.h"
 
 MediaSessionManager* MediaSessionManager::createNew() {
     return new MediaSessionManager();

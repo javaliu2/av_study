@@ -1,10 +1,10 @@
-#include "MediaSession.h"
+#include "live/MediaSession.h"
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
 #include <algorithm>
 #include <assert.h>
-#include "Logger.h"
+#include "base/Logger.h"
 
 MediaSession* MediaSession::createNew(std::string sessionName) {
     return new MediaSession(sessionName);

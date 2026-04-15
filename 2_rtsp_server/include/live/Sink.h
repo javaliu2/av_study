@@ -3,9 +3,9 @@
 #include <stdint.h>
 
 #include "Rtp.h"
-#include "MediaSource.h"
-#include "Event.h"
-#include "UsageEnvironment.h"
+#include "live/MediaSource.h"
+#include "scheduler/Event.h"
+#include "scheduler/UsageEnvironment.h"
 
 class Sink {
 public:

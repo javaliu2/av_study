@@ -54,9 +54,10 @@ public:
     RtpPacket();
     ~RtpPacket();
 public:
-    uint8_t* mBuf;  // 4+rtpHeader+rtpBody
-    uint8_t* mBuf4;  // rtpHeader+rtpBody
-    RtpHeader* const mRtpHeader;  // TODO const为什么要这样设置，是不是写错位置了？
+    uint8_t* mBuf;  // 4+rtpHeader+rtpBody, 供使用TCP发送数据包使用
+    uint8_t* mBuf4;  // rtpHeader+rtpBody，供使用UDP发送数据包使用
+    RtpHeader* const mRtpHeader;  // Q: const为什么要这样设置，是不是写错位置了？
+    // A: 没有写错，这样设置，表示mRtpHeader一经赋值就不可修改（指向其他内存地址）
     int mSize;  // rtpHeader + rtpBody
 };
 

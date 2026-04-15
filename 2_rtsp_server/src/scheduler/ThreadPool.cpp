@@ -1,5 +1,5 @@
-#include "ThreadPool.h"
-#include "Logger.h"
+#include "scheduler/ThreadPool.h"
+#include "base/Logger.h"
 
 ThreadPool* ThreadPool::createNew(int num) {
     return new ThreadPool(num);

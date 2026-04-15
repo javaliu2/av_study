@@ -1,7 +1,7 @@
 #pragma once
-#include "UsageEnvironment.h"
-#include"Event.h"
-#include "Buffer.h"
+#include "scheduler/UsageEnvironment.h"
+#include "scheduler/Event.h"
+#include "live/Buffer.h"
 
 class TcpConnection {
 public:

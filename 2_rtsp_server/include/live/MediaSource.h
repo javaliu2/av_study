@@ -3,8 +3,8 @@
 #include <mutex>
 #include <stdint.h>
 #include <string>
-#include "UsageEnvironment.h"
-#include "ThreadPool.h"
+#include "scheduler/UsageEnvironment.h"
+#include "scheduler/ThreadPool.h"
 
 // Q: 这个帧大小指的是哪一个帧
 // A: 指的是 视频帧 或者 音频帧

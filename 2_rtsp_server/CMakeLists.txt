@@ -21,8 +21,14 @@ file(GLOB_RECURSE HEADER_FILES
 
 #递归搜索所有源文件
 file(GLOB_RECURSE SRC_FILES
-    ${CMAKE_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/live/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/scheduler/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/main.cpp
 )
 
 # 添加头文件搜索路径
 include_directories(${CMAKE_SOURCE_DIR}/include)
+add_executable(2_rtsp_server_exe ${SRC_FILES})
+if (WIN32)
+    target_link_libraries(2_rtsp_server_exe PRIVATE ws2_32)
+endif()

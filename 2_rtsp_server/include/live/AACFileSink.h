@@ -1,6 +1,6 @@
 #pragma once
-#include "UsageEnvironment.h"
-#include "Sink.h"
+#include "scheduler/UsageEnvironment.h"
+#include "live/Sink.h"
 #include "MediaSource.h"
 
 class AACFileSink : public Sink {
