@@ -43,7 +43,7 @@ private:
     void loop();
     class MThread : public Thread {
     protected:
-        virtual void run(void* arg);
+        void run(void* arg) override;
     };
     void createThreads();
     void cancelThreads();

@@ -43,20 +43,48 @@ static inline void reset_log_color() {
 }
 
 // 日志宏
+// #define LOG_INFO(fmt, ...)  do { \
+//     set_log_color_info(); \
+//     printf("[INFO ][%s:%d %s] " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+//     reset_log_color(); \
+// } while (0)
+
+// #define LOG_DEBUG(fmt, ...) do { \
+//     set_log_color_debug(); \
+//     printf("[DEBUG][%s:%d %s] " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+//     reset_log_color(); \
+// } while (0)
+
+// #define LOG_ERROR(fmt, ...) do { \
+//     set_log_color_error(); \
+//     printf("[ERROR][%s:%d %s] " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+//     reset_log_color(); \
+// } while (0)
+#include <thread>
+
 #define LOG_INFO(fmt, ...)  do { \
     set_log_color_info(); \
-    printf("[INFO ][%s:%d %s] " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+    printf("[INFO ][%s:%d %s][tid=%zu] " fmt "\n", \
+        __FILE__, __LINE__, __func__, \
+        std::hash<std::thread::id>{}(std::this_thread::get_id()), \
+        ##__VA_ARGS__); \
     reset_log_color(); \
 } while (0)
 
 #define LOG_DEBUG(fmt, ...) do { \
     set_log_color_debug(); \
-    printf("[DEBUG][%s:%d %s] " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+    printf("[DEBUG][%s:%d %s][tid=%zu] " fmt "\n", \
+        __FILE__, __LINE__, __func__, \
+        std::hash<std::thread::id>{}(std::this_thread::get_id()), \
+        ##__VA_ARGS__); \
     reset_log_color(); \
 } while (0)
 
 #define LOG_ERROR(fmt, ...) do { \
     set_log_color_error(); \
-    printf("[ERROR][%s:%d %s] " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+    printf("[ERROR][%s:%d %s][tid=%zu] " fmt "\n", \
+        __FILE__, __LINE__, __func__, \
+        std::hash<std::thread::id>{}(std::this_thread::get_id()), \
+        ##__VA_ARGS__); \
     reset_log_color(); \
 } while (0)

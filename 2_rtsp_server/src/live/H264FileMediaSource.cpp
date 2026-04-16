@@ -13,7 +13,7 @@ H264FileMediaSource::H264FileMediaSource(UsageEnvironment* env, const std::strin
     MediaSource(env) {
     mSourceName = file;
     mFile = fopen(file.c_str(), "rb");
-    setFps(25);
+    setFps(30);
 
     for (int i = 0; i < DEFAULT_FRAME_NUM; ++i) {
         mEnv->threadPool()->addTask(mTask);

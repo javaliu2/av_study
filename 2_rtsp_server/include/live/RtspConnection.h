@@ -15,7 +15,7 @@ public:
     RtspConnection(RtspServer* rtspServer, int clientFd);
     virtual ~RtspConnection();
 protected:
-    virtual void handleReadBytes();
+    void handleReadBytes() override;
 private:
     bool parseRequest();
     bool parseRequest1(const char* begin, const char* end);

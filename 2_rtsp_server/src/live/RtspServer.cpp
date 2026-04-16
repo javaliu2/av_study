@@ -23,7 +23,7 @@ RtspServer::RtspServer(UsageEnvironment* env, MediaSessionManager* sessMgr, Ipv4
 }
 
 void RtspServer::start() {
-    LOG_INFO("");
+    LOG_INFO("RtspServer::start()");
     mListen = true;
     sockets::listen(mFd, 60);
     mEnv->scheduler()->addIOEvent(mAcceptIOEvent);  // 将 接受新连接 事件加入poller

@@ -73,7 +73,7 @@ public:
         mWriteIndex = 0;
     }
     void retrieve(int len) {
-        assert(len < readableBytes());
+        assert(len <= readableBytes());
         if (len < readableBytes()) {
             mReadIndex += len;
         } else {

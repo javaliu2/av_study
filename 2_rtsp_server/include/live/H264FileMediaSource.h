@@ -10,7 +10,7 @@ public:
     virtual ~H264FileMediaSource();
 
 protected:
-    virtual void handleTask();
+    void handleTask() override;
 
 private:
     int getFrameFromH264File(uint8_t* frame, int size);

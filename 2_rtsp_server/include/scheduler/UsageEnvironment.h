@@ -1,11 +1,9 @@
-﻿#ifndef BXC_RTSPSERVER_USAGEENVIRONMENT_H
-#define BXC_RTSPSERVER_USAGEENVIRONMENT_H
+﻿#pragma once
 
 #include "ThreadPool.h"
 #include "EventScheduler.h"
 
-class UsageEnvironment
-{
+class UsageEnvironment {
 public:
     static UsageEnvironment* createNew(EventScheduler* scheduler, ThreadPool* threadPool);
 
@@ -19,5 +17,3 @@ private:
     EventScheduler* mScheduler;
     ThreadPool* mThreadPool;
 };
-
-#endif //BXC_RTSPSERVER_USAGEENVIRONMENT_H

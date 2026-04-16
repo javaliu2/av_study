@@ -43,7 +43,7 @@ RtspConnection::~RtspConnection() {
     for (int i = 0; i < MEDIA_MAX_TRACK_NUM; ++i) {
         if (mRtpInstances[i]) {
             MediaSession* session = mRtspServer->mSessMgr->getSession(mSuffix);
-            if (!session) {
+            if (session) {
                 session->removeRtpInstance(mRtpInstances[i]);
             }
             delete mRtpInstances[i];
@@ -73,7 +73,7 @@ bool RtspConnection::parseRequest1(const char* begin, const char* end) {
         mMethod = DESCRIBE;
     } else if (!strcmp(method, "SETUP")) {
         mMethod = SETUP;
-    } else if (!strcmp(method, "PALY")) {
+    } else if (!strcmp(method, "PLAY")) { // ATTENTION! 拼写错误
         mMethod = PLAY;
     } else if (!strcmp(method, "TEARDOWN")) {
         mMethod = TEARDOWN;
@@ -215,11 +215,12 @@ bool RtspConnection::parseSetup(std::string& message) {
         } else if ((pos = message.find("RTP/AVP")) != std::string::npos) {
             uint16_t rtpPort = 0, rtcpPort = 0;
             // 实例: Transport: RTP/AVP;unicast;client_port=63538-63539
-            if (sscanf(message.c_str() + pos, "%*[^;];%*[^;];%*[^=]=%hu-%hu", &rtpPort, &rtcpPort) != 2) {
-                return false;
+            if (message.find("unicast", pos) != std::string::npos) {
+                if (sscanf(message.c_str() + pos, "%*[^;];%*[^;];%*[^=]=%hu-%hu", &rtpPort, &rtcpPort) != 2) {
+                    return false;
+                }
             } else if (message.find("multicast", pos) != std::string::npos) {
-                return true;  // Q: 这啥意思?
-                // A: 如果是组播，直接返回成功
+                return true;  // Q: 这啥意思? A: 如果是组播，直接返回成功
             } else {
                 return false;
             }
@@ -255,6 +256,7 @@ bool RtspConnection::handleCmdOption() {
     "\r\n", mCSeq, PROJECT_VERSION);
 
     if (sendMessage(mBuffer, strlen(mBuffer)) < 0) {
+        LOG_INFO("error");
         return false;
     }
     return true;
@@ -267,6 +269,7 @@ bool RtspConnection::handleCmdDescribe() {
         return false;
     }
     std::string sdp = session->generateSdpDescription();
+    LOG_DEBUG("sdp: %s", sdp.c_str());
     memset((void*)mBuffer, 0, sizeof(mBuffer));
     snprintf((char*)mBuffer, sizeof(mBuffer), 
             "RTSP/1.0 200 OK\r\n"
@@ -284,12 +287,13 @@ bool RtspConnection::handleCmdDescribe() {
 
 bool RtspConnection::handleCmdSetup() {
     char sessionName[100] = {0};
-    // TODO 不懂这个mSuffix长什么样，sessionName长什么样
-    LOG_DEBUG("mSuffix: %s", mSuffix.c_str());
+    // Q: 不懂这个mSuffix长什么样，sessionName长什么样
+    // A: 针对setup请求
+    LOG_DEBUG("mSuffix: %s", mSuffix.c_str());  // mSuffix: test/track0 和 test/track1
     if (sscanf(mSuffix.c_str(), "%[^/]/", sessionName) != 1) {
         return false;
     }
-    LOG_DEBUG("sessionName: %s", sessionName);
+    LOG_DEBUG("sessionName: %s", sessionName);  // sessionName: test
     MediaSession* session = mRtspServer->mSessMgr->getSession(sessionName);
     if (!session) {
         LOG_ERROR("can not find session: %s", sessionName);
@@ -401,7 +405,8 @@ int RtspConnection::sendMessage() {
     mOutBuffer.retrieveAll();
     return ret;
 }
-// TODO 不太懂这个handle
+// Q: 不太懂这个handle
+// A: 针对rtsp协议层逻辑的处理（包括解析请求头，根据请求的方法做出对应的处理）
 void RtspConnection::handleReadBytes() {
     if (mIsRtpOverTcp) {
         if (mInputBuffer.peek()[0] == '$') {
@@ -416,11 +421,13 @@ void RtspConnection::handleReadBytes() {
     switch(mMethod) {
         case OPTIONS:
             if (!handleCmdOption()) {
+                LOG_ERROR("handleCmdOption failed");
                 goto disConnect;
             }
             break;
         case DESCRIBE:
             if (!handleCmdDescribe()) {
+                LOG_ERROR("handleCmdDescribe failed");
                 goto disConnect;
             }
             break;
@@ -442,6 +449,7 @@ void RtspConnection::handleReadBytes() {
         default:
             goto disConnect;
     }
+    return;  // ATTENTION! 这里必须return，否则顺序执行的话，正常情况也会执行到下面的disConnect
 disConnect:
     handleDisConnect();
 }
