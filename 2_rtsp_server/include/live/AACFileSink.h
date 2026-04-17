@@ -8,13 +8,13 @@ public:
     static AACFileSink* createNew(UsageEnvironment* env, MediaSource* mediaSource);
 
     AACFileSink(UsageEnvironment* env, MediaSource* mediaSource, int payloadType);
-    virtual ~AACFileSink();
+    ~AACFileSink() override;
 
-    virtual std::string getMediaDescription(uint16_t port);
-    virtual std::string getAttribute();
+    std::string getMediaDescription(uint16_t port) override;
+    std::string getAttribute() override;
 
 protected:
-    virtual void sendFrame(MediaFrame* frame);
+    void sendFrame(MediaFrame* frame) override;
 
 private:
     RtpPacket mRtpPacket;

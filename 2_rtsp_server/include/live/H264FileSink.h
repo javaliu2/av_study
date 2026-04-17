@@ -7,10 +7,10 @@ public:
     static H264FileSink* createNew(UsageEnvironment* env, MediaSource* mediaSource);
 
     H264FileSink(UsageEnvironment* env, MediaSource* mediaSource);
-    virtual ~H264FileSink();
-    virtual std::string getMediaDescription(uint16_t port);
-    virtual std::string getAttribute();
-    virtual void sendFrame(MediaFrame* frame);
+    ~H264FileSink() override;
+    std::string getMediaDescription(uint16_t port) override;
+    std::string getAttribute() override;
+    void sendFrame(MediaFrame* frame) override;
 
 private:
     RtpPacket mRtpPacket;

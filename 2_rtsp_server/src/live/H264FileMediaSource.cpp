@@ -108,9 +108,16 @@ int H264FileMediaSource::getFrameFromH264File(uint8_t* frame, int size) {
 
     nextStartCode = findNextStartCode(frame + 3, r - 3);
     if (!nextStartCode) {
-        fseek(mFile, 0, SEEK_SET);
-        frameSize = r;
-        LOG_ERROR("Read %s error, no nextStartCode, r = %d", mSourceName.c_str(), r);
+        if (feof(mFile)) {
+            // End of file, reset to beginning for looping
+            fseek(mFile, 0, SEEK_SET);
+            frameSize = r;
+        } else {
+            // Unexpected error, no start code found
+            fseek(mFile, 0, SEEK_SET);
+            LOG_ERROR("Read %s error, no nextStartCode, r = %d", mSourceName.c_str(), r);
+            return -1;
+        }
     } else {
         frameSize = (nextStartCode - frame);
         fseek(mFile, frameSize-r, SEEK_CUR);

@@ -16,7 +16,7 @@ EventScheduler* EventScheduler::createNew(PollerType type) {
     }
     return new EventScheduler(type);
 }
-
+// 初始化 mPoller 对象和 mTimerManager 对象
 EventScheduler::EventScheduler(PollerType type) : mQuit(false) {
 #ifdef WIN32
     WSADATA wdSockMsg;  // WSA: Windows Sockets Api
@@ -55,6 +55,7 @@ EventScheduler::EventScheduler(PollerType type) : mQuit(false) {
             _exit(-1);
             break;
     }
+    // 初始化mTimerManager对象，同时设置this对象，即当前EventScheduler对象的mTimerManagerReadCallback为TimerManager对象的readCallback函数
     mTimerManager = TimerManager::createNew(this);  // WIN系统的定时器回调由子线程托管，非WIN系统则通过select网络模型
 #endif
 }
@@ -119,6 +120,7 @@ void EventScheduler::loop() {
     // G-bro建议这样写:
     std::thread([this]() {
         while (!mQuit) {
+            // 在初始化当前对象的时候已经完成了对 mTimerManagerReadCallback 和 mTimerManagerArg 的赋值
             if (mTimerManagerReadCallback) {
                 mTimerManagerReadCallback(mTimerManagerArg);
             }

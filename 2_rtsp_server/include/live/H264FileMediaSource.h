@@ -7,7 +7,7 @@ public:
     static H264FileMediaSource* createNew(UsageEnvironment* env, const std::string& file);
 
     H264FileMediaSource(UsageEnvironment* env, const std::string& file);
-    virtual ~H264FileMediaSource();
+    ~H264FileMediaSource() override;
 
 protected:
     void handleTask() override;

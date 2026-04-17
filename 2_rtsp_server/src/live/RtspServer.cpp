@@ -22,6 +22,7 @@ RtspServer::RtspServer(UsageEnvironment* env, MediaSessionManager* sessMgr, Ipv4
     mCloseTriggerEvent->setTriggerCallback(cbCloseConnect);  // 设置 连接关闭 的回调函数
 }
 
+// 开启服务器监听，同时将mAcceptIOEvent加入poller监听
 void RtspServer::start() {
     LOG_INFO("RtspServer::start()");
     mListen = true;

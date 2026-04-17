@@ -50,7 +50,9 @@ public:
     Timer::TimerId addTimer(TimerEvent* event, Timer::Timestamp timestamp, Timer::TimeInterval timeInterval);
     bool removeTimer(Timer::TimerId timerId);
 private:
-    static void readCallback(void* arg);  // TODO why set be 'static' ?
+    // Q: why set be 'static' ?
+    // A: 设置回调函数一般都设置为static的，因为参数arg可以指明是哪一个对象
+    static void readCallback(void* arg);  
     void handleRead();
     void modifyTimeout();
 private:

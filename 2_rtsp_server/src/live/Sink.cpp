@@ -54,6 +54,7 @@ void Sink::cbTimeout(void* arg) {
     sink->handleTimeout();
 }
 
+// 定时任务: 从输出队列获取帧，将帧发送，最后将使用过的帧放入输入队列
 void Sink::handleTimeout() {
     MediaFrame* frame = mMediaSource->getFrameFromOutputQueue();
     if (!frame) {
@@ -65,6 +66,7 @@ void Sink::handleTimeout() {
     mMediaSource->putFrameToInputQueue(frame);
 }
 
+// 启动定时任务，每隔interval个时间单位，执行一次定时任务
 void Sink::runEvery(int interval) {
     mTimerId = mEnv->scheduler()->addTimerEventRunEvery(mTimerEvent, interval);
 }

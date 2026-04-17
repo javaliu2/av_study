@@ -7,10 +7,10 @@ public:
     static AACFileMediaSource* createNew(UsageEnvironment* env, const std::string& file);
 
     AACFileMediaSource(UsageEnvironment* env, const std::string& file);
-    virtual ~AACFileMediaSource();
+    ~AACFileMediaSource() override;
 
 protected:
-    virtual void handleTask();
+    void handleTask() override;
 
 private:
     struct AdtsHeader {

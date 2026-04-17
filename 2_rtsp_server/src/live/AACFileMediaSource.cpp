@@ -11,7 +11,10 @@ AACFileMediaSource::AACFileMediaSource(UsageEnvironment* env, const std::string&
     mFile = fopen(file.c_str(), "rb");
     setFps(43);  // 44100(1秒钟的采样点) / 1024(1帧的采样点) => 1秒43帧
     for (int i = 0; i < DEFAULT_FRAME_NUM; ++i) {
-        mEnv->threadPool()->addTask(mTask);  // TODO 为什么要连续加这几个任务
+        // Q: 为什么要连续加这几个任务
+        // A: mTask任务在父类中完成初始化，执行的是每一个子类的handleTask函数，连续加四个task是为了加快数据的读取吧
+        // 不是，handleTask是线程互斥的，所以这里加入DEFAULT_FRAME_NUM个任务就是为了消耗掉mFrameInputQueue中的帧，获取这么多帧数据
+        mEnv->threadPool()->addTask(mTask);  
     }
 }
 

@@ -94,6 +94,7 @@ TimerManager::TimerManager(EventScheduler* scheduler) :
     mPoller->addIOEvent(mTimerIOEvent);
 #else
     // windows系统使用单独的线程处理timer事件
+    // 设置scheduler对象的 mTimerManagerReadCallback 和 mTimerManagerArg 参数
     scheduler->setTimerManagerReadCallback(readCallback, this);
 #endif
 }

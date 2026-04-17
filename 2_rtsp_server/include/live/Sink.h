@@ -47,9 +47,11 @@ protected:
     uint8_t mVersion;
     uint8_t mPayloadType;
     uint8_t mMarker;
-    uint8_t mSeq;
-    uint8_t mTimestamp;
-    uint8_t mSSRC;
+    // 还得是AI，人脑比不了，还得是大模型
+    // 错误是之前以下三个字段粗心写成了uint8_t类型的
+    uint16_t mSeq;
+    uint32_t mTimestamp;
+    uint32_t mSSRC;
 
 private:
     TimerEvent* mTimerEvent;
