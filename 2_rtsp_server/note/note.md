@@ -66,6 +66,49 @@ unique_lock = 功能完整的智能锁（可控、可转移、可配合条件变
 👉 第2个字节（8 bits）
 | b7        | b6 b5 b4 b3 | b2 b1 b0 |
 | freq低1位 | channel cfg | 备用 |
+
+### 2、梳理定时器相关的操作
+### 1. 类EventScheduler
+构造的对象起名为gScheduler（g即global之意）
+构造函数：构造成员变量mPoller（类型：Poller类）和mTimerManager（类型：TimerManager类），构造后者的时候将对象指针**this**传递给该对象
+#### 1.1 类Poller
+构造的对象起名为gPoller
+构造函数：将mReadSet、mWriteSet、mExceptionSet均置为0
+#### 1.2 类TimerManager
+1、构造的对象起名为gTimerManager
+2、构造函数：由于scheduler构造时传递了**this**指针，即gScheduler对象，使用该对象获取到gPoller对象，完成本类成员变量mPoller的赋值，同时设置gScheduler的函数指针变量mTimerManagerReadCallback的值为本类的readCallback函数
+3、readCallback函数
+
+### 2. 定时器事件的加入
+#### 1. 类TimeEvent
+包括成员变量mArg和mTimeoutCallback，其handleEvent函数实现如下：
+```c
+void TimerEvent::handleEvent() {
+    if (mTimeoutCallback) {
+        mTimeoutCallback(mArg);
+    }
+}```
+
+#### 2. 类Sink
+以H264FileSink为例说明
+1、构造的对象起名为h264FileSink
+2、构造函数：构造TimerEvent对象h264SinkTimerEvent，将**this**传递给该对象(完成其mArg参数的赋值)，同时设置h264SinkTimerEvent的mTimeoutCallback函数指针变量的值为本类的静态cbTimeout函数，该函数实现如下：
+```c
+void Sink::cbTimeout(void* arg) {
+    Sink* sink = (Sink*)arg;
+    sink->handleTimeout();
+}```
+
+由于传递了**this**对象，因此调用h264SinkTimerEvent的handleEvent函数，调用的是h264FileSink对象的handleTimeout函数（cbTimeout函数的处理实现了这一目的）
+3、runEvery函数的实现如下，其中```mEnv->scheduler()```获取到的就是gScheduler对象，addTimerEventRunEvery函数调用的是gTimerManager对象的addTimer函数。
+```c
+void Sink::runEvery(int interval) {
+  mTimerId = mEnv->scheduler()->addTimerEventRunEvery(mTimerEvent, interval);
+}```
+#### 1. 定时器类Timer
+
+#### 3. 定时器管理类TimerManager
+
 ## 3、库函数
 fcntl中F_SETFL和F_SETFD的区别？
 | 对比             | F_SETFL           | F_SETFD      |
