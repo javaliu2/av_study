@@ -70,13 +70,17 @@ unique_lock = 功能完整的智能锁（可控、可转移、可配合条件变
 ### 2、梳理定时器相关的操作
 ### 1. 类EventScheduler
 构造的对象起名为gScheduler（g即global之意）
+
 构造函数：构造成员变量mPoller（类型：Poller类）和mTimerManager（类型：TimerManager类），构造后者的时候将对象指针**this**传递给该对象
 #### 1.1 类Poller
 构造的对象起名为gPoller
+
 构造函数：将mReadSet、mWriteSet、mExceptionSet均置为0
 #### 1.2 类TimerManager
 1、构造的对象起名为gTimerManager
+
 2、构造函数：由于scheduler构造时传递了**this**指针，即gScheduler对象，使用该对象获取到gPoller对象，完成本类成员变量mPoller的赋值，同时设置gScheduler的函数指针变量mTimerManagerReadCallback的值为本类的readCallback函数
+
 3、readCallback函数
 
 ### 2. 定时器事件的加入
@@ -92,7 +96,9 @@ void TimerEvent::handleEvent() {
 
 #### 2. 类Sink
 以H264FileSink为例说明
+
 1、构造的对象起名为h264FileSink
+
 2、构造函数：构造TimerEvent对象h264SinkTimerEvent，将**this**传递给该对象(完成其mArg参数的赋值)，同时设置h264SinkTimerEvent的mTimeoutCallback函数指针变量的值为本类的静态cbTimeout函数，该函数实现如下：
 ```c
 void Sink::cbTimeout(void* arg) {
@@ -102,6 +108,7 @@ void Sink::cbTimeout(void* arg) {
 ```
 
 由于传递了**this**对象，因此调用h264SinkTimerEvent的handleEvent函数，调用的是h264FileSink对象的handleTimeout函数（cbTimeout函数的处理实现了这一目的）
+
 3、runEvery函数的实现如下，其中```mEnv->scheduler()```获取到的就是gScheduler对象，addTimerEventRunEvery函数调用的是gTimerManager对象的addTimer函数。
 ```c
 void Sink::runEvery(int interval) {
@@ -110,7 +117,10 @@ void Sink::runEvery(int interval) {
 ```
 
 ### 3、日志分析
-如下是日志输出，其中tid为15729502191765196471的是main线程，tid为18137369640724998020是处理定时器事件的线程。本例中，h264文件的fps为30，那么他的定时器事件时间间隔为1000/30~=33；aac文件的fps为43，他的定时器事件时间间隔为1000/43~=23。
+如下是日志输出，其中tid为15729502191765196471的是main线程，tid为18137369640724998020是处理定时器事件的线程。
+
+本例中，h264文件的fps为30，那么他的定时器事件时间间隔为1000/30~=33；aac文件的fps为43，他的定时器事件时间间隔为1000/43~=23。
+
 ```c
 [INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\RtspServer.cpp:16 RtspServer][tid=15729502191765196471] rtsp://127.0.0.1:8554 fd=244
 [INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Event.cpp:23 IOEvent][tid=15729502191765196471] IOEvent() fd=244
@@ -133,6 +143,7 @@ void Sink::runEvery(int interval) {
 // // 处理9608266437时刻触发的定时器事件，即aac file sink事件，由于是循环的定时器事件，故将9608266437+23=9608266460时刻触发的定时器加入timerManager
 [DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Timer.cpp:164 handleRead][tid=18137369640724998020] timestamp=9608266460
 [DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Timer.cpp:164 handleRead][tid=18137369640724998020] timestamp=9608266466
+```
 
 ## 3、库函数
 fcntl中F_SETFL和F_SETFD的区别？
