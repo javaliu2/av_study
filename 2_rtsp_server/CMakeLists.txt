@@ -3,6 +3,7 @@ project(2_rtsp_server)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_BUILD_TYPE Debug)
 
 set(STUDY_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/my_way)
 add_executable(virtual_study ${STUDY_SRC}/virtual_test.cpp)

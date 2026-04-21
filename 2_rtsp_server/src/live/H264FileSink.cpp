@@ -15,7 +15,7 @@ H264FileSink::H264FileSink(UsageEnvironment* env, MediaSource* mediaSource) :
     mClockRate(90000),
     mFps(mediaSource->getFps()) {
     LOG_INFO("H264FileSink()");
-    runEvery(1000 / mFps);
+    runEvery(1000 / mFps); // 本例中fps是30，时间间隔为33ms
 }
 
 H264FileSink::~H264FileSink() {

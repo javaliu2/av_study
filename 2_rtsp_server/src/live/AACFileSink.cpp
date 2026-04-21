@@ -15,7 +15,7 @@ AACFileSink::AACFileSink(UsageEnvironment* env, MediaSource* mediaSource, int pa
     mFps(mediaSource->getFps()) {
     LOG_INFO("AACFileSink()");
     mMarker = 1;
-    runEvery(1000 / mFps);  // 单位ms，1帧的时长
+    runEvery(1000 / mFps);  // 单位ms，1帧的时长，fps为43，时间间隔为23ms
 }
 
 AACFileSink::~AACFileSink() {

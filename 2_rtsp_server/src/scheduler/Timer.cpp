@@ -106,12 +106,12 @@ TimerManager::~TimerManager() {
 #endif
 }
 
-Timer::TimerId TimerManager::addTimer
-    ( TimerEvent* event, Timer::Timestamp timestamp,
-      Timer::TimeInterval timeInterval ) {
+Timer::TimerId TimerManager::addTimer(TimerEvent* event, Timer::Timestamp timestamp,
+    Timer::TimeInterval timeInterval) {
     ++mLastTimerId;  // 定时器ID递增
     Timer timer(event, timestamp, timeInterval, mLastTimerId);  // 构造一个定时器对象
-    // TODO 存疑。这里加入的是值（对象的拷贝），而不是指针
+    // 存疑。这里加入的是值（对象的拷贝），而不是指针
+    // 就是要加入对象本身，因为他是在栈上构造的对象
     mTimers.insert(std::make_pair(mLastTimerId, timer));
     mEvents.insert(std::make_pair(timestamp, timer));  // 同一个时刻可能有多个定时器启动
     modifyTimeout();
@@ -124,6 +124,13 @@ bool TimerManager::removeTimer(Timer::TimerId timerId) {
     if (it != mTimers.end()) {
         mTimers.erase(timerId);
         // TODO 还需要删除mEvents的事件
+        std::map<Timer::Timestamp, Timer>::iterator it2 = mEvents.begin();
+        for (; it2 != mEvents.end(); ++it2) {
+            if (it2->second.mTimerId == timerId) {
+                mEvents.erase(it2);
+                break;
+            }
+        }
     }
     modifyTimeout();
     return true;
@@ -155,6 +162,7 @@ void TimerManager::handleRead() {
         // auto i = new Timer(NULL, 1, 1, 1);  // 调用私有的构造函数
         // delete i;
         if (timestamp > timer.mTimestamp || expire == 0) {
+            LOG_DEBUG("handleRead timestamp=%lld", timestamp);
             bool timerEventIsStop = timer.handleEvent();
             mEvents.erase(it);
             if (timer.mRepeat) {

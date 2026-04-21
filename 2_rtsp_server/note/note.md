@@ -87,7 +87,8 @@ void TimerEvent::handleEvent() {
     if (mTimeoutCallback) {
         mTimeoutCallback(mArg);
     }
-}```
+}
+```
 
 #### 2. 类Sink
 以H264FileSink为例说明
@@ -97,17 +98,41 @@ void TimerEvent::handleEvent() {
 void Sink::cbTimeout(void* arg) {
     Sink* sink = (Sink*)arg;
     sink->handleTimeout();
-}```
+}
+```
 
 由于传递了**this**对象，因此调用h264SinkTimerEvent的handleEvent函数，调用的是h264FileSink对象的handleTimeout函数（cbTimeout函数的处理实现了这一目的）
 3、runEvery函数的实现如下，其中```mEnv->scheduler()```获取到的就是gScheduler对象，addTimerEventRunEvery函数调用的是gTimerManager对象的addTimer函数。
 ```c
 void Sink::runEvery(int interval) {
   mTimerId = mEnv->scheduler()->addTimerEventRunEvery(mTimerEvent, interval);
-}```
-#### 1. 定时器类Timer
+}
+```
 
-#### 3. 定时器管理类TimerManager
+### 3、日志分析
+如下是日志输出，其中tid为15729502191765196471的是main线程，tid为18137369640724998020是处理定时器事件的线程。本例中，h264文件的fps为30，那么他的定时器事件时间间隔为1000/30~=33；aac文件的fps为43，他的定时器事件时间间隔为1000/43~=23。
+```c
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\RtspServer.cpp:16 RtspServer][tid=15729502191765196471] rtsp://127.0.0.1:8554 fd=244
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Event.cpp:23 IOEvent][tid=15729502191765196471] IOEvent() fd=244
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Event.cpp:85 TriggerEvent][tid=15729502191765196471] TriggerEvent()
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\main.cpp:22 main][tid=15729502191765196471] ------------ session init start ------------
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\MediaSession.cpp:17 MediaSession][tid=15729502191765196471] MediaSession(), sessionName=test
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\Sink.cpp:10 Sink][tid=15729502191765196471] Sink()
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Event.cpp:53 TimerEvent][tid=15729502191765196471] TimerEvent()
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\H264FileSink.cpp:17 H264FileSink][tid=15729502191765196471] H264FileSink()
+[DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\EventScheduler.cpp:90 addTimerEventRunEvery][tid=15729502191765196471] timestamp=9608266433  // 将该时刻9608266433触发的定时器(h264 file sink)加入timerManager
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\Sink.cpp:10 Sink][tid=15729502191765196471] Sink()
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Event.cpp:53 TimerEvent][tid=15729502191765196471] TimerEvent()
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\AACFileSink.cpp:16 AACFileSink][tid=15729502191765196471] AACFileSink()
+[DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\EventScheduler.cpp:90 addTimerEventRunEvery][tid=15729502191765196471]  timestamp=9608266436  // // 将该时刻9608266436触发的定时器(aac file sink)加入timerManager
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\main.cpp:36 main][tid=15729502191765196471] ------------ session init end ------------
+[INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\RtspServer.cpp:27 start][tid=15729502191765196471] RtspServer::start()
+[DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Timer.cpp:164 handleRead][tid=18137369640724998020] timestamp=9608266433
+// 处理9608266433时刻触发的定时器事件，即h264 file sink事件，由于是循环的定时器事件，故将9608266433+33=9608266466时刻触发的定时器加入timerManager
+[DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Timer.cpp:164 handleRead][tid=18137369640724998020] timestamp=9608266437
+// // 处理9608266437时刻触发的定时器事件，即aac file sink事件，由于是循环的定时器事件，故将9608266437+23=9608266460时刻触发的定时器加入timerManager
+[DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Timer.cpp:164 handleRead][tid=18137369640724998020] timestamp=9608266460
+[DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Timer.cpp:164 handleRead][tid=18137369640724998020] timestamp=9608266466
 
 ## 3、库函数
 fcntl中F_SETFL和F_SETFD的区别？

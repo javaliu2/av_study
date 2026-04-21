@@ -87,6 +87,7 @@ Timer::TimerId EventScheduler::addTimerEventRunAt(TimerEvent* event, Timer::Time
 Timer::TimerId EventScheduler::addTimerEventRunEvery(TimerEvent* event, Timer::TimeInterval interval) {
     Timer::Timestamp timestamp = Timer::getCurTime();
     timestamp += interval;
+    LOG_DEBUG("timestamp=%lld", timestamp);
     return mTimerManager->addTimer(event, timestamp, interval);
 }
 
