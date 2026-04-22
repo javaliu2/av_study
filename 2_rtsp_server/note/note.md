@@ -59,24 +59,27 @@ unique_lock = 功能完整的智能锁（可控、可转移、可配合条件变
 ## 2、业务相关
 ### 1、AAC中AudioSpecificConfig字段
 在SDP中通常使用两个字节表示，第一个字节高5位是object type，低3位是采样率索引index的高3位；
-第二个字节的高1位是index的低1位，第6到第3位是channel
+第二个字节的高1位是index的低1位，第6到第3位是channel。
+
+```c
 👉 第1个字节（8 bits）
 | b7 b6 b5 b4 b3 | b2 b1 b0 |
 | object type    | freq idx 高3位 |
 👉 第2个字节（8 bits）
 | b7        | b6 b5 b4 b3 | b2 b1 b0 |
 | freq低1位 | channel cfg | 备用 |
+```
 
 ### 2、梳理定时器相关的操作
-### 1. 类EventScheduler
+#### 2.1. 类EventScheduler
 构造的对象起名为gScheduler（g即global之意）
 
 构造函数：构造成员变量mPoller（类型：Poller类）和mTimerManager（类型：TimerManager类），构造后者的时候将对象指针**this**传递给该对象
-#### 1.1 类Poller
+#### 2.2 类Poller
 构造的对象起名为gPoller
 
 构造函数：将mReadSet、mWriteSet、mExceptionSet均置为0
-#### 1.2 类TimerManager
+#### 2.3 类TimerManager
 1、构造的对象起名为gTimerManager
 
 2、构造函数：由于scheduler构造时传递了**this**指针，即gScheduler对象，使用该对象获取到gPoller对象，完成本类成员变量mPoller的赋值，同时设置gScheduler的函数指针变量mTimerManagerReadCallback的值为本类的readCallback函数
