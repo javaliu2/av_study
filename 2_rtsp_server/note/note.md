@@ -71,23 +71,23 @@ unique_lock = 功能完整的智能锁（可控、可转移、可配合条件变
 ```
 
 ### 2、梳理定时器相关的操作
-#### 2.1. 类EventScheduler
+#### 2.1、类EventScheduler
 构造的对象起名为gScheduler（g即global之意）
 
 构造函数：构造成员变量mPoller（类型：Poller类）和mTimerManager（类型：TimerManager类），构造后者的时候将对象指针**this**传递给该对象
-#### 2.2 类Poller
+#### 2.2、类Poller
 构造的对象起名为gPoller
 
 构造函数：将mReadSet、mWriteSet、mExceptionSet均置为0
-#### 2.3 类TimerManager
+#### 2.3、类TimerManager
 1、构造的对象起名为gTimerManager
 
 2、构造函数：由于scheduler构造时传递了**this**指针，即gScheduler对象，使用该对象获取到gPoller对象，完成本类成员变量mPoller的赋值，同时设置gScheduler的函数指针变量mTimerManagerReadCallback的值为本类的readCallback函数
 
 3、readCallback函数
 
-### 2. 定时器事件的加入
-#### 1. 类TimeEvent
+#### 2.4、定时器事件的加入
+##### 2.4.1、类TimeEvent
 包括成员变量mArg和mTimeoutCallback，其handleEvent函数实现如下：
 ```c
 void TimerEvent::handleEvent() {
@@ -97,7 +97,7 @@ void TimerEvent::handleEvent() {
 }
 ```
 
-#### 2. 类Sink
+##### 2.4.2、类Sink
 以H264FileSink为例说明
 
 1、构造的对象起名为h264FileSink
