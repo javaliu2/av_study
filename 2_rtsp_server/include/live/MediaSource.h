@@ -29,9 +29,10 @@ class MediaSource {
 public:
     explicit MediaSource(UsageEnvironment* env);
     virtual ~MediaSource();
+    // 以下两个接口是供sink消费使用
+    MediaFrame* getFrameFromOutputQueue();  // 从输出队列获取数据帧
+    void putFrameToInputQueue(MediaFrame* frame);  // 把消费过的原始帧送入输入队列
     
-    MediaFrame* getFrameFromOutputQueue();  // 从输出队列获取帧
-    void putFrameToInputQueue(MediaFrame* frame);  // 把帧送入输入队列
     int getFps() const { return mFps; }
     std::string getSourceName() const { return mSourceName; }
 private:

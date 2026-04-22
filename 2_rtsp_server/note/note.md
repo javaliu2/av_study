@@ -116,7 +116,75 @@ void Sink::runEvery(int interval) {
 }
 ```
 
-### 3、日志分析
+### 3、梳理session相关
+#### 3.1、MediaSessionManager类
+维护一个map，key为session名字，value为MediaSession*。
+
+提供关于增、删、获取指定session名字所对应MediaSession对象的方法
+#### 3.2、MediaSession类
+提供会话，一个会话包含MEDIA_MAX_TRACK_NUM个Track对象，Track类定义在MediaSession类中，其声明如下：
+```c
+class Track {
+    public:
+        Sink* mSink;
+        int mTrackId;
+        bool mIsAlive;
+        std::list<RtpInstance*> mRtpInstances;
+    };
+```
+Track即媒体通道，是音频通道还是视频通道，MEDIA_MAX_TRACK_NUM定义为2，即一个MediaSession对象最多提供2个媒体通道。
+
+### 4、梳理source和sink之间的关系
+#### 4.1、思想
+将source注册到sink中，两者通过倒腾mFrameInputQueue和mFrameOutputQueue队列实现媒体文件数据资源的生产和消费。
+
+#### 4.2、source对象的创建
+创建source对象时，首先调用父类的构造函数，将DEFAULT_FRAME_NUM个MediaFrame对象（预先分配的固定的内存资源，便于重用）加入mFrameInputQueue队列，同时设置task回调函数，主要逻辑如下：
+```c
+void FileMediaSource::handleTask() {
+    std::lock_guard<std::mutex> lck(mMtx);
+    if (mFrameInputQueue.empty()) {
+        return;
+    }
+    MediaFrame* frame = mFrameInputQueue.front();
+    frame->mSize = getFrameFromFile(frame->temp, FRAME_MAX_SIZE);
+    if (frame->mSize < 0) {
+        return;
+    }
+    mFrameInputQueue.pop();
+    mFrameOutputQueue.push(frame);
+}
+```
+其次，执行子类的构造函数，打开h264或者aac文件获得文件流，向线程池中加入DEFAULT_FRAME_NUM个task。task回调函数是从mFrameInputQueue pop一个帧，填充该帧文件数据，将填充好的帧数据push到mFrameOutputQueue。所以这里的input和output是针对server来说的，input就是输入到server的数据，output就是要离开server的数据（发送到网络上）。
+
+#### 4.3、sink对象的创建
+创建sink对象时，父类构造函数创建timer事件，然后设置其回调函数handleTimeout。实现如下：
+```c
+void Sink::handleTimeout() {
+    MediaFrame* frame = mMediaSource->getFrameFromOutputQueue();
+    if (!frame) {
+        return;
+    }
+    this->sendFrame(frame);
+    mMediaSource->putFrameToInputQueue(frame);
+}
+```
+由于sink持有source的引用，因此可以操作source的两个帧队列，sendFrame函数的话，aac和h264有各自的处理。
+
+子类的构造函数通过独立的线程启动一定间隔的timer事件监听。
+
+### 5、梳理rtsp server
+#### 5.1、RtspSever的创建
+创建RtspServer对象，注册accept事件监听，处理函数是创建RtspConnection对象
+#### 5.2、RtspConnection的创建
+当有client连接到达，会得到client_fd，执行以上处理函数去创建RtspConnection对象。首先调用父类TcpConnection的构造函数，该构造注册了client_fd的可读事件监听，其处理函数为解析rtsp请求并做出对应处理。
+
+针对SETUP请求，由于RtspSever对象持有创建MediaSessionManager对象，因此尝试获取SETUP解析到的sessonName所对应的session对象，如果成功，那么创建对应track上的RtpInstance对象。
+
+#### 5.3、补充
+Buffer发送h264和aac文件的时候都没有使用，只是接受rtsp请求和发送rtsp响应的时候用到了。
+
+### 6、日志分析
 如下是日志输出，其中tid为15729502191765196471的是main线程，tid为18137369640724998020是处理定时器事件的线程。
 
 本例中，h264文件的fps为30，那么他的定时器事件时间间隔为1000/30~=33；aac文件的fps为43，他的定时器事件时间间隔为1000/43~=23。
@@ -130,11 +198,13 @@ void Sink::runEvery(int interval) {
 [INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\Sink.cpp:10 Sink][tid=15729502191765196471] Sink()
 [INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Event.cpp:53 TimerEvent][tid=15729502191765196471] TimerEvent()
 [INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\H264FileSink.cpp:17 H264FileSink][tid=15729502191765196471] H264FileSink()
-[DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\EventScheduler.cpp:90 addTimerEventRunEvery][tid=15729502191765196471] timestamp=9608266433  // 将该时刻9608266433触发的定时器(h264 file sink)加入timerManager
+[DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\EventScheduler.cpp:90 addTimerEventRunEvery][tid=15729502191765196471] timestamp=9608266433  
+// 将该时刻9608266433触发的定时器(h264 file sink)加入timerManager
 [INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\Sink.cpp:10 Sink][tid=15729502191765196471] Sink()
 [INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Event.cpp:53 TimerEvent][tid=15729502191765196471] TimerEvent()
 [INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\AACFileSink.cpp:16 AACFileSink][tid=15729502191765196471] AACFileSink()
-[DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\EventScheduler.cpp:90 addTimerEventRunEvery][tid=15729502191765196471]  timestamp=9608266436  // // 将该时刻9608266436触发的定时器(aac file sink)加入timerManager
+[DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\EventScheduler.cpp:90 addTimerEventRunEvery][tid=15729502191765196471]  timestamp=9608266436  
+// 将该时刻9608266436触发的定时器(aac file sink)加入timerManager
 [INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\main.cpp:36 main][tid=15729502191765196471] ------------ session init end ------------
 [INFO ][C:\Users\23590\Documents\av_study\2_rtsp_server\src\live\RtspServer.cpp:27 start][tid=15729502191765196471] RtspServer::start()
 [DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Timer.cpp:164 handleRead][tid=18137369640724998020] timestamp=9608266433
