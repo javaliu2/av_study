@@ -21,11 +21,11 @@ public:
         return mEnv;
     }
 private:
-    static void readCallback(void* arg);
-    void handleRead();
-    static void cbDisConnect(void* arg, int clientFd);
+    static void acceptCallback(void* arg);
+    void handleAccept();
+    static void disConnectCallback(void* arg, int clientFd);
     void handleDisConnect(int clientFd);
-    static void cbCloseConnect(void* arg);
+    static void closeConnectCallback(void* arg);
     void handleCloseConnect();
 private:
     UsageEnvironment* mEnv;
