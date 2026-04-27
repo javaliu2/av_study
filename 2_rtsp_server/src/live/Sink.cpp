@@ -44,6 +44,7 @@ void Sink::sendRtpPacket(RtpPacket* packet) {
     rtpHeader->timestamp = htonl(mTimestamp);
     rtpHeader->ssrc = htonl(mSSRC);
 
+    // 该回调在addSink()中设置，调用的是MediaSession::sendPacketCallback()
     if (mSessionSendPacketCb) {
         mSessionSendPacketCb(mArg1, mArg2, packet, PacketType::RTPPACKET);
     }
@@ -60,7 +61,7 @@ void Sink::handleTimeout() {
     if (!frame) {
         return;
     }
-    this->sendFrame(frame);  // 由具体子类实现发送逻辑
+    this->sendFrame(frame);  // 子类将帧封装成RTP包，然后调用父类sendRtpPacket()进行发送
     // 将使用过的frame插入输入队列，插入输入队列以后，加入一个子线程task,
     // 从文件中读取数据再次将输入写入到frame
     mMediaSource->putFrameToInputQueue(frame);

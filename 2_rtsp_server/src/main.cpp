@@ -24,7 +24,7 @@ int main() {
         MediaSession* session = MediaSession::createNew("test");
         MediaSource* source = H264FileMediaSource::createNew(env, "../resource/test.h264");
         Sink* sink = H264FileSink::createNew(env, source);  // 构造函数中构造 消费h264文件定时器事件，然后将事件加入timerManager
-        session->addSink(MediaSession::TrackId0, sink);
+        session->addSink(MediaSession::TrackId0, sink);  // 将sink设置到1st parameter所确定的track中，同时设置sink的会话回调函数为MediaSession::sendPacketCallback()
 
         source = AACFileMediaSource::createNew(env, "../resource/test.aac");
         sink = AACFileSink::createNew(env, source);  // 构造消费aac文件定时器事件，将事件加入timerManager

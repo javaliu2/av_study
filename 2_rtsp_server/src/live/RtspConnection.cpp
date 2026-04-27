@@ -322,7 +322,7 @@ bool RtspConnection::handleCmdSetup() {
             createRtpOverTcp(mTrackId, mClientFd, mRtpChannel);  // 在解析setup请求中完成了字段mTrackId、mRtpChannel、mIsRtpOverTcp的赋值
             mRtpInstances[mTrackId]->setSessionId(mSessionId);
             
-            session->addRtpInstance(mTrackId, mRtpInstances[mTrackId]);
+            session->addRtpInstance(mTrackId, mRtpInstances[mTrackId]);  // // 将mTrackId通道的rtp实例加入session对应通道的rtp实例列表中
             snprintf((char*)mBuffer, sizeof(mBuffer),
                     "RTSP/1.0 200 OK\r\n"
                     "CSeq: %d\r\n"

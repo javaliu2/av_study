@@ -218,6 +218,78 @@ Buffer发送h264和aac文件的时候都没有使用，只是接受rtsp请求和
 [DEBUG][C:\Users\23590\Documents\av_study\2_rtsp_server\src\scheduler\Timer.cpp:164 handleRead][tid=18137369640724998020] timestamp=9608266466
 ```
 
+### 7、梳理rtp实例创建、加入session的逻辑
+会话MediaSession是全局独一份，RtspConnection是每一个client一个，一个RtspConnection对象有2个rtpInstance和2个rtcpInstance（因为媒体通道有两个，分别是音频和视频），然后每一个连接的音频或者视频通道的rtpInstance对象被加入到会话对象对应的track的mRtpInstance列表中。
+
+RtspConnection::handleCmdSetup()负责创建rtpInstance和rtcpInstance，另外将创建的rtpInstance加入session对应track的mRtpInstance列表中。
+简略的代码如下：
+```c
+bool RtspConnection::handleCmdSetup() {
+	...
+	// 获取到sessionName
+    MediaSession* session = mRtspServer->mSessMgr->getSession(sessionName);
+    if (!session) {
+        LOG_ERROR("can not find session: %s", sessionName);
+        return false;
+    }
+    // mTrackId不合法 或者 已经有rtp或者rtcp的实例（表明已经setup过了）
+    if (mTrackId >= MEDIA_MAX_TRACK_NUM || mRtpInstances[mTrackId] || mRtcpInstances[mTrackId]) {
+        return false;
+    }
+    if (mIsRtpOverTcp) {
+       // 创建 rtp over tcp
+       createRtpOverTcp(mTrackId, mClientFd, mRtpChannel);
+       mRtpInstances[mTrackId]->setSessionId(mSessionId);
+       session->addRtpInstance(mTrackId, mRtpInstances[mTrackId]);  // 将mTrackId通道的rtp实例加入session对应通道的rtp实例列表中
+	   ...
+```
+
+RtspConnection::handleCmdPlay()负责将该连接中已经创建的rtp和rtcp实例的存活状态设置为开启。如下代码行12-19所示。
+```c
+bool RtspConnection::handleCmdPlay() {
+    snprintf((char*)mBuffer, sizeof(mBuffer),
+            "RTSP/1.0 200 OK\r\n"
+            "CSeq: %d\r\n"
+            "Server: %s\r\n"
+            "Range: npt=0.000-\r\n"
+            "Session: %08x; timeout=60\r\n"
+            "\r\n", mCSeq, PROJECT_VERSION, mSessionId);
+    if (sendMessage(mBuffer, strlen(mBuffer)) < 0) {
+        return false;
+    }
+    for (int i = 0; i < MEDIA_MAX_TRACK_NUM; ++i) {
+        if (mRtpInstances[i]) {
+            mRtpInstances[i]->setAlive(true);
+        }
+        if (mRtcpInstances[i]) {
+            mRtcpInstances[i]->setAlive(true);
+        }
+    }
+    return true;
+}
+```
+
+程序执行时，在main()中的```session->addSink(MediaSession::TrackId0, sink);```，表示将sink设置到1st parameter所确定的track中，同时设置sink的会话回调函数为MediaSession::sendPacketCallback()。创建H264FileSink对象时，会启动定时任务，定时任务的代码如下：
+```c
+void Sink::handleTimeout() {
+    MediaFrame* frame = mMediaSource->getFrameFromOutputQueue();
+    if (!frame) {
+        return;
+    }
+    this->sendFrame(frame);
+    mMediaSource->putFrameToInputQueue(frame);
+}
+```
+其中，sendFrame中调用了Sink类的sendRtpPacket方法，该方法中调用了MediaSession::sendPacketCallback()。
+```c
+void Sink::sendRtpPacket(RtpPacket* packet) {
+    // 该回调在addSink()中设置，调用的是MediaSession::sendPacketCallback()
+    if (mSessionSendPacketCb) {
+        mSessionSendPacketCb(mArg1, mArg2, packet, PacketType::RTPPACKET);
+    }
+}
+```
+
 ## 3、库函数
 fcntl中F_SETFL和F_SETFD的区别？
 | 对比             | F_SETFL           | F_SETFD      |

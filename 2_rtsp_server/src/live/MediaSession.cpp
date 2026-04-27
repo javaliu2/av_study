@@ -71,6 +71,7 @@ MediaSession::Track* MediaSession::getTrack(MediaSession::TrackId trackId) {
     return nullptr;
 }
 
+// 只被调用过2次，就是在main()中，因为媒体通道只有2个
 bool MediaSession::addSink(MediaSession::TrackId trackId, Sink* sink) {
     Track* track = getTrack(trackId);
     if (!track) {
@@ -82,6 +83,7 @@ bool MediaSession::addSink(MediaSession::TrackId trackId, Sink* sink) {
     return true;
 }
 
+// 被调用过client_num次*2，因为每个client连接会有两路通道（音频和视频）
 bool MediaSession::addRtpInstance(MediaSession::TrackId trackId, RtpInstance* rtpInstance) {
     Track* track = getTrack(trackId);
     if (!track || track->mIsAlive != true) {
@@ -102,6 +104,7 @@ void MediaSession::sendPacketCallback(void* arg1, void* arg2, void* packet, Sink
 void MediaSession::handleSendRtpPacket(MediaSession::Track* track, RtpPacket* rtpPacket) {
     for (auto it = track->mRtpInstances.begin(); it != track->mRtpInstances.end(); ++it) {
         RtpInstance* rtpInstance = *it;
+        // 在RtspConnection的handleCmdPlay函数中，已经将rtp实例的alive状态设置为true了，所以这里就可以直接发送了
         if (rtpInstance->getAlive()) {
             rtpInstance->send(rtpPacket);
         }
