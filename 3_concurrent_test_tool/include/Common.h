@@ -16,13 +16,13 @@ static std::string getCurTimeStr() {
     // if _Time is non-null, also stores that value through the provided pointer.
     // 返回自1970-01-01 00:00:00 UTC以来的秒数
     time_t now = time(nullptr);
-    printf("time() result: %lld\n", static_cast<long long>(now));
+    // printf("time() result: %lld\n", static_cast<long long>(now));
     char time_str[64];
     // localtime() Converts a time_t value to a tm structure representing the local calendar time, 
     // returning a pointer to a statically allocated tm object.
     size_t res = strftime(time_str, sizeof(time_str), time_fmt, localtime(&now));
     // 以上函数的含义即是str format time，将time格式化为指定字符串形式的时间表示
-    printf("strftime result: %d\n", res);  // 结果是19，因为是写入time_str的字符个数，而不是time_fmt的长度
+    // printf("strftime result: %d\n", res);  // 结果是19，因为是写入time_str的字符个数，而不是time_fmt的长度
     return std::string(time_str);  // 2026-04-30 15:11:39
     // 64位int(有符号位)可以表示的年数=(2^63-1)/（365*24*60*60) ~= 2924,7120,8677, 2924亿年之多
 }
@@ -59,6 +59,6 @@ static void logw(std::string log) {
     // meaning output is positioned at the end of the file before each write.
     fs.open("log.log", std::ofstream::app);
     fs << "[W]" << getCurTimeStr() << " " << log << std::endl;  // 写到文件
-    std::cout << "'[W]" << getCurTimeStr() << " " << log << std::endl;  // 写到console
+    std::cout << "[W]" << getCurTimeStr() << " " << log << std::endl;  // 写到console
     fs.close();
 }

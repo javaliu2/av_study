@@ -11,7 +11,7 @@ public:
     ~FFmpegDecoder();
 public:
     // 测试拉流
-    void testPullStream(int thread_num, const char* input, const char* rtsp_transport, const char* decoder);
+    void testPullStream(int thread_num, const char* input, const char* rtsp_transport);
     // 测试拉流+解码
     void testPullAndDecodeStream(int thread_num, const char* input, const char* rtsp_transport, const char* decoder);
 private:
